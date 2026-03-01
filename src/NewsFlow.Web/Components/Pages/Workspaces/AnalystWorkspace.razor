@@ -1,0 +1,106 @@
+@page "/workspace/analyst"
+@rendermode InteractiveServer
+@inject ISender Sender
+@inject ISnackbar Snackbar
+
+<PageTitle>Аналитик</PageTitle>
+<MudText Typo="Typo.h5" Class="mb-4">Рабочее место аналитика</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-2">Переведённые материалы</MudText>
+            <MudTable T="NewsFlow.Application.Materials.DTOs.MaterialListItemDto" Items="_queue" Hover="true" Dense="true" Loading="_loading"
+                      OnRowClick="@(args => SelectMaterial(args.Item))">
+                <HeaderContent>
+                    <MudTh>Заголовок</MudTh>
+                    <MudTh>Источник</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Title</MudTd>
+                    <MudTd>@context.Source</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="4">
+        @if (_selected != null)
+        {
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.h6">@_selected.Title</MudText>
+                <MudText Typo="Typo.caption">@_selected.Source | @_selected.Country</MudText>
+                <MudDivider Class="my-2" />
+                <MudText Typo="Typo.subtitle2">Перевод</MudText>
+                <MudTextField Value="@_selected.TranslatedText" Lines="10" ReadOnly="true" Variant="Variant.Outlined" />
+                <MudText Typo="Typo.subtitle2" Class="mt-2">Оригинал</MudText>
+                <MudTextField Value="@_selected.OriginalText" Lines="6" ReadOnly="true" Variant="Variant.Outlined" />
+            </MudPaper>
+        }
+    </MudItem>
+
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-2">Новый документ</MudText>
+            <MudTextField @bind-Value="_docTitle" Label="Заголовок документа" Variant="Variant.Outlined" Class="mb-2" />
+            <MudTextField @bind-Value="_docContent" Label="Текст документа" Lines="12" Variant="Variant.Outlined" Class="mb-2" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateDocument"
+                       Disabled="@(_selected == null || string.IsNullOrWhiteSpace(_docTitle))">
+                Создать документ
+            </MudButton>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<NewsFlow.Application.Materials.DTOs.MaterialListItemDto> _queue = [];
+    private NewsFlow.Application.Materials.DTOs.MaterialDto? _selected;
+    private string _docTitle = "";
+    private string _docContent = "";
+    private bool _loading;
+    private bool _taken;
+
+    protected override async Task OnInitializedAsync() => await LoadQueue();
+
+    private async Task LoadQueue()
+    {
+        _loading = true;
+        var result = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialsQuery(
+            Status: NewsFlow.Domain.Enums.MaterialStatus.Translated));
+        _queue = result.Items.ToList();
+        _loading = false;
+    }
+
+    private async Task SelectMaterial(NewsFlow.Application.Materials.DTOs.MaterialListItemDto item)
+    {
+        _selected = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialByIdQuery(item.Id));
+
+        if (!_taken)
+        {
+            try
+            {
+                _selected = await Sender.Send(new NewsFlow.Application.Materials.Commands.TakeMaterialForTranslationCommand(_selected.Id));
+                _taken = true;
+            }
+            catch { /* may already be in different status */ }
+        }
+    }
+
+    private async Task CreateDocument()
+    {
+        if (_selected == null) return;
+        try
+        {
+            var doc = await Sender.Send(new NewsFlow.Application.Documents.Commands.CreateDocumentCommand(
+                new NewsFlow.Application.Documents.DTOs.CreateDocumentDto(
+                    _docTitle, _docContent, [_selected.Id], _selected.Priority)));
+            Snackbar.Add($"Документ создан: {doc.Title}", Severity.Success);
+            _selected = null;
+            _taken = false;
+            _docTitle = "";
+            _docContent = "";
+            await LoadQueue();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

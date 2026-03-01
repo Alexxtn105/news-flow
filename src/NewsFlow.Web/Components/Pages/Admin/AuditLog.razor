@@ -1,0 +1,69 @@
+@page "/admin/audit-log"
+@rendermode InteractiveServer
+@inject ISender Sender
+
+<PageTitle>Аудит-лог</PageTitle>
+<MudText Typo="Typo.h5" Class="mb-4">Журнал аудита</MudText>
+
+<MudGrid Class="mb-3">
+    <MudItem xs="12" sm="3">
+        <MudTextField @bind-Value="_entityType" Label="Тип сущности" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Clearable="true" />
+    </MudItem>
+    <MudItem xs="12" sm="3">
+        <MudDatePicker @bind-Date="_from" Label="С" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" />
+    </MudItem>
+    <MudItem xs="12" sm="3">
+        <MudDatePicker @bind-Date="_to" Label="По" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" />
+    </MudItem>
+    <MudItem xs="12" sm="3" Class="d-flex align-end">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => _table?.ReloadServerData())">
+            Применить
+        </MudButton>
+    </MudItem>
+</MudGrid>
+
+<MudTable T="NewsFlow.Application.AuditLogs.Queries.AuditLogDto" ServerData="ServerLoad" @ref="_table"
+          Hover="true" Dense="true" Striped="true">
+    <HeaderContent>
+        <MudTh>Дата</MudTh>
+        <MudTh>Пользователь</MudTh>
+        <MudTh>Действие</MudTh>
+        <MudTh>Тип сущности</MudTh>
+        <MudTh>ID сущности</MudTh>
+        <MudTh>Детали</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.CreatedAt.ToString("dd.MM.yyyy HH:mm:ss")</MudTd>
+        <MudTd>@(context.UserName ?? "—")</MudTd>
+        <MudTd>@context.Action</MudTd>
+        <MudTd>@context.EntityType</MudTd>
+        <MudTd Style="max-width:200px;overflow:hidden;text-overflow:ellipsis">@context.EntityId</MudTd>
+        <MudTd Style="max-width:300px;overflow:hidden;text-overflow:ellipsis">@context.Details</MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new[]{20, 50, 100}" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private MudTable<NewsFlow.Application.AuditLogs.Queries.AuditLogDto>? _table;
+    private string? _entityType;
+    private DateTime? _from;
+    private DateTime? _to;
+
+    private async Task<TableData<NewsFlow.Application.AuditLogs.Queries.AuditLogDto>> ServerLoad(TableState state, CancellationToken ct)
+    {
+        var result = await Sender.Send(new NewsFlow.Application.AuditLogs.Queries.GetAuditLogsQuery(
+            Page: state.Page + 1,
+            PageSize: state.PageSize,
+            EntityType: _entityType,
+            From: _from,
+            To: _to?.AddDays(1)), ct);
+        return new TableData<NewsFlow.Application.AuditLogs.Queries.AuditLogDto>
+        {
+            Items = result.Items,
+            TotalItems = result.TotalCount
+        };
+    }
+}

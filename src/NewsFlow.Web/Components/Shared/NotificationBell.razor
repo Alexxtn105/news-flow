@@ -1,0 +1,64 @@
+@inject ISnackbar Snackbar
+@inject AuthStateService Auth
+@implements IDisposable
+
+<MudBadge Content="@_unreadCount" Color="Color.Error" Overlap="true" Visible="@(_unreadCount > 0)">
+    <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit"
+                   OnClick="ToggleNotifications" />
+</MudBadge>
+
+@if (_showPanel)
+{
+    <MudPopover Open="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                Class="pa-4" Style="min-width:320px;max-height:400px;overflow-y:auto">
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Уведомления</MudText>
+        @if (_notifications.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Нет уведомлений</MudText>
+        }
+        else
+        {
+            @foreach (var n in _notifications.TakeLast(20).Reverse())
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-1" NoIcon="true">
+                    <MudText Typo="Typo.body2">@n.Message</MudText>
+                    <MudText Typo="Typo.caption">@n.Timestamp.ToString("HH:mm:ss")</MudText>
+                </MudAlert>
+            }
+        }
+        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="ClearNotifications" Class="mt-2">
+            Очистить
+        </MudButton>
+    </MudPopover>
+}
+
+@code {
+    private record NotificationItem(string Message, DateTime Timestamp);
+
+    private List<NotificationItem> _notifications = [];
+    private int _unreadCount;
+    private bool _showPanel;
+
+    public void AddNotification(string message)
+    {
+        _notifications.Add(new NotificationItem(message, DateTime.Now));
+        _unreadCount++;
+        Snackbar.Add(message, Severity.Info);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleNotifications()
+    {
+        _showPanel = !_showPanel;
+        if (_showPanel) _unreadCount = 0;
+    }
+
+    private void ClearNotifications()
+    {
+        _notifications.Clear();
+        _unreadCount = 0;
+        _showPanel = false;
+    }
+
+    public void Dispose() { }
+}

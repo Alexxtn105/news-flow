@@ -1,0 +1,148 @@
+@page "/workspace/translator"
+@rendermode InteractiveServer
+@inject ISender Sender
+@inject ISnackbar Snackbar
+
+<PageTitle>Переводчик</PageTitle>
+<MudText Typo="Typo.h5" Class="mb-4">Рабочее место переводчика</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="5">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-2">Очередь на перевод</MudText>
+            <MudTable T="NewsFlow.Application.Materials.DTOs.MaterialListItemDto" Items="_queue" Hover="true" Dense="true" Loading="_loading"
+                      OnRowClick="@(args => SelectMaterial(args.Item))">
+                <HeaderContent>
+                    <MudTh>Заголовок</MudTh>
+                    <MudTh>Язык</MudTh>
+                    <MudTh>Приоритет</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Title</MudTd>
+                    <MudTd>@context.OriginalLanguage</MudTd>
+                    <MudTd><MudChip T="string" Size="Size.Small" Color="GetPriorityColor(context.Priority)">@context.Priority</MudChip></MudTd>
+                </RowTemplate>
+            </MudTable>
+            <MudButton Variant="Variant.Text" OnClick="LoadQueue" Class="mt-2">Обновить</MudButton>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="7">
+        @if (_selected != null)
+        {
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.h6">@_selected.Title</MudText>
+                <MudDivider Class="my-2" />
+
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.subtitle2">Оригинал (@_selected.OriginalLanguage)</MudText>
+                        <MudTextField Value="@_selected.OriginalText" Lines="12" ReadOnly="true"
+                                      Variant="Variant.Outlined" Class="mt-2" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.subtitle2">Перевод</MudText>
+                        <MudTextField @bind-Value="_translatedText" Lines="12"
+                                      Variant="Variant.Outlined" Placeholder="Введите перевод..." Class="mt-2" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudStack Row="true" Class="mt-3" Justify="Justify.FlexEnd">
+                    @if (!_taken)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="TakeMaterial">
+                            Взять в работу
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Outlined" OnClick="SaveDraft">Сохранить черновик</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Complete">Завершить перевод</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="Release">Вернуть</MudButton>
+                    }
+                </MudStack>
+            </MudPaper>
+        }
+        else
+        {
+            <MudPaper Class="pa-8 d-flex align-center justify-center" Elevation="1" Style="min-height:300px">
+                <MudText Color="Color.Secondary">Выберите материал из очереди</MudText>
+            </MudPaper>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<NewsFlow.Application.Materials.DTOs.MaterialListItemDto> _queue = [];
+    private NewsFlow.Application.Materials.DTOs.MaterialDto? _selected;
+    private string _translatedText = "";
+    private bool _loading;
+    private bool _taken;
+
+    protected override async Task OnInitializedAsync() => await LoadQueue();
+
+    private async Task LoadQueue()
+    {
+        _loading = true;
+        var result = await Sender.Send(new NewsFlow.Application.Materials.Commands.GetTranslatorQueueQuery());
+        _queue = result.Items.ToList();
+        _loading = false;
+    }
+
+    private async Task SelectMaterial(NewsFlow.Application.Materials.DTOs.MaterialListItemDto item)
+    {
+        _selected = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialByIdQuery(item.Id));
+        _translatedText = _selected.TranslatedText ?? "";
+        _taken = false;
+    }
+
+    private async Task TakeMaterial()
+    {
+        if (_selected == null) return;
+        try
+        {
+            _selected = await Sender.Send(new NewsFlow.Application.Materials.Commands.TakeMaterialForTranslationCommand(_selected.Id));
+            _taken = true;
+            Snackbar.Add("Материал взят в работу", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task SaveDraft()
+    {
+        if (_selected == null) return;
+        await Sender.Send(new NewsFlow.Application.Materials.Commands.SaveTranslationDraftCommand(_selected.Id, _translatedText));
+        Snackbar.Add("Черновик сохранён", Severity.Info);
+    }
+
+    private async Task Complete()
+    {
+        if (_selected == null) return;
+        try
+        {
+            await Sender.Send(new NewsFlow.Application.Materials.Commands.CompleteTranslationCommand(_selected.Id, _translatedText));
+            Snackbar.Add("Перевод завершён", Severity.Success);
+            _selected = null;
+            _taken = false;
+            await LoadQueue();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task Release()
+    {
+        if (_selected == null) return;
+        await Sender.Send(new NewsFlow.Application.Materials.Commands.ReleaseMaterialFromTranslationCommand(_selected.Id));
+        Snackbar.Add("Материал возвращён в очередь", Severity.Info);
+        _selected = null;
+        _taken = false;
+        await LoadQueue();
+    }
+
+    private Color GetPriorityColor(NewsFlow.Domain.Enums.Priority p) => p switch
+    {
+        NewsFlow.Domain.Enums.Priority.Urgent => Color.Error,
+        NewsFlow.Domain.Enums.Priority.High => Color.Warning,
+        _ => Color.Default
+    };
+}

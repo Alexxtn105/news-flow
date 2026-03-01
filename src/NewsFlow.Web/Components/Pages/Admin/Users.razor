@@ -1,0 +1,149 @@
+@page "/admin/users"
+@rendermode InteractiveServer
+@inject ISender Sender
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Пользователи</PageTitle>
+<MudText Typo="Typo.h5" Class="mb-4">Управление пользователями</MudText>
+
+<MudStack Row="true" Class="mb-3" Justify="Justify.SpaceBetween">
+    <MudTextField @bind-Value="_search" Placeholder="Поиск..." Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                  DebounceInterval="400" OnDebounceIntervalElapsed="LoadUsers"
+                  Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:300px" />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">Добавить пользователя</MudButton>
+</MudStack>
+
+<MudTable T="NewsFlow.Application.Users.DTOs.UserDto" ServerData="ServerLoad" @ref="_table" Hover="true" Dense="true" Striped="true">
+    <HeaderContent>
+        <MudTh>Логин</MudTh>
+        <MudTh>ФИО</MudTh>
+        <MudTh>Роли</MudTh>
+        <MudTh>Языки</MudTh>
+        <MudTh>Статус</MudTh>
+        <MudTh>Последний вход</MudTh>
+        <MudTh Style="width:100px">Действия</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Username</MudTd>
+        <MudTd>@context.FullName</MudTd>
+        <MudTd>
+            @foreach (var role in context.Roles)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="mr-1">@role</MudChip>
+            }
+        </MudTd>
+        <MudTd>@string.Join(", ", context.Languages)</MudTd>
+        <MudTd>
+            <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Error)">
+                @(context.IsActive ? "Активен" : "Заблокирован")
+            </MudChip>
+        </MudTd>
+        <MudTd>@(context.LastLoginAt?.ToString("dd.MM.yyyy HH:mm") ?? "—")</MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                           OnClick="@(() => DeleteUser(context))" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new[]{10, 20, 50}" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private MudTable<NewsFlow.Application.Users.DTOs.UserDto>? _table;
+    private string? _search;
+    private IReadOnlyList<NewsFlow.Application.References.DTOs.RoleDto> _roles = [];
+    private IReadOnlyList<NewsFlow.Application.References.DTOs.LanguageDto> _languages = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _roles = await Sender.Send(new NewsFlow.Application.References.Queries.GetRolesQuery());
+        _languages = await Sender.Send(new NewsFlow.Application.References.Queries.GetLanguagesQuery());
+    }
+
+    private async Task<TableData<NewsFlow.Application.Users.DTOs.UserDto>> ServerLoad(TableState state, CancellationToken ct)
+    {
+        var result = await Sender.Send(new NewsFlow.Application.Users.Queries.GetUsersQuery(
+            Page: state.Page + 1, PageSize: state.PageSize, Search: _search), ct);
+        return new TableData<NewsFlow.Application.Users.DTOs.UserDto>
+        {
+            Items = result.Items,
+            TotalItems = result.TotalCount
+        };
+    }
+
+    private async Task LoadUsers() => _table?.ReloadServerData();
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<UserEditDialog>
+        {
+            { x => x.AllRoles, _roles },
+            { x => x.AllLanguages, _languages }
+        };
+        var dialog = await DialogService.ShowAsync<UserEditDialog>("Новый пользователь", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var dto = (NewsFlow.Application.Users.DTOs.CreateUserDto)result.Data!;
+            try
+            {
+                await Sender.Send(new NewsFlow.Application.Users.Commands.CreateUserCommand(dto));
+                Snackbar.Add("Пользователь создан", Severity.Success);
+                await _table!.ReloadServerData();
+            }
+            catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        }
+    }
+
+    private async Task OpenEditDialog(NewsFlow.Application.Users.DTOs.UserDto user)
+    {
+        var parameters = new DialogParameters<UserEditDialog>
+        {
+            { x => x.UserId, user.Id },
+            { x => x.Username, user.Username },
+            { x => x.FullName, user.FullName },
+            { x => x.IsActive, user.IsActive },
+            { x => x.SelectedRoleNames, user.Roles.ToList() },
+            { x => x.SelectedLanguageCodes, user.Languages.ToList() },
+            { x => x.AllRoles, _roles },
+            { x => x.AllLanguages, _languages },
+            { x => x.IsEdit, true }
+        };
+        var dialog = await DialogService.ShowAsync<UserEditDialog>("Редактирование пользователя", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var dto = (NewsFlow.Application.Users.DTOs.UpdateUserDto)result.Data!;
+            try
+            {
+                await Sender.Send(new NewsFlow.Application.Users.Commands.UpdateUserCommand(user.Id, dto));
+                Snackbar.Add("Пользователь обновлён", Severity.Success);
+                await _table!.ReloadServerData();
+            }
+            catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        }
+    }
+
+    private async Task DeleteUser(NewsFlow.Application.Users.DTOs.UserDto user)
+    {
+        bool? confirmed = await DialogService.ShowMessageBox(
+            "Удаление", $"Удалить пользователя «{user.FullName}»?", yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed == true)
+        {
+            try
+            {
+                await Sender.Send(new NewsFlow.Application.Users.Commands.DeleteUserCommand(user.Id));
+                Snackbar.Add("Пользователь удалён", Severity.Success);
+                await _table!.ReloadServerData();
+            }
+            catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        }
+    }
+}

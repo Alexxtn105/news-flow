@@ -1,0 +1,67 @@
+@page "/admin/languages"
+@rendermode InteractiveServer
+@inject ISender Sender
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Языки</PageTitle>
+<MudText Typo="Typo.h5" Class="mb-4">Справочник языков</MudText>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+           OnClick="OpenCreate" Class="mb-3">Добавить язык</MudButton>
+
+<MudTable T="NewsFlow.Application.References.DTOs.LanguageDto" Items="_items" Hover="true" Dense="true" Loading="_loading" Striped="true">
+    <HeaderContent>
+        <MudTh>Код</MudTh>
+        <MudTh>Название</MudTh>
+        <MudTh Style="width:80px">Действия</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Code</MudTd>
+        <MudTd>@context.Name</MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                           OnClick="@(() => Delete(context))" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private IReadOnlyList<NewsFlow.Application.References.DTOs.LanguageDto> _items = [];
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        _loading = true;
+        _items = await Sender.Send(new NewsFlow.Application.References.Queries.GetLanguagesQuery());
+        _loading = false;
+    }
+
+    private async Task OpenCreate()
+    {
+        var parameters = new DialogParameters<LanguageEditDialog>();
+        var dialog = await DialogService.ShowAsync<LanguageEditDialog>("Новый язык", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var dto = (NewsFlow.Application.References.DTOs.CreateLanguageDto)result.Data!;
+            await Sender.Send(new NewsFlow.Application.References.Commands.CreateLanguageCommand(dto));
+            Snackbar.Add("Язык добавлен", Severity.Success);
+            await Load();
+        }
+    }
+
+    private async Task Delete(NewsFlow.Application.References.DTOs.LanguageDto item)
+    {
+        bool? confirmed = await DialogService.ShowMessageBox("Удаление", $"Удалить «{item.Name}»?", yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed == true)
+        {
+            await Sender.Send(new NewsFlow.Application.References.Commands.DeleteLanguageCommand(item.Id));
+            Snackbar.Add("Язык удалён", Severity.Success);
+            await Load();
+        }
+    }
+}

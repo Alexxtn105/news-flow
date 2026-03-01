@@ -1,0 +1,24 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_code" Label="Код (ISO 639-1)" Variant="Variant.Outlined" MaxLength="2" Class="mb-2" />
+        <MudTextField @bind-Value="_name" Label="Название" Variant="Variant.Outlined" Class="mb-2" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit">Создать</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    private string _code = "";
+    private string _name = "";
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(new NewsFlow.Application.References.DTOs.CreateLanguageDto(_code, _name)));
+    }
+}

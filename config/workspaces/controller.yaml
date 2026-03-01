@@ -1,0 +1,48 @@
+workspace:
+  code: "controller"
+  name: "Рабочее место контролёра"
+  description: "Финальный контроль документов"
+  required_role: "Controller"
+
+  input_queue:
+    entity: "Document"
+    filter:
+      status: "Registered"
+      assigned_to: null
+    sort:
+      - field: "priority"
+        direction: "desc"
+      - field: "created_at"
+        direction: "asc"
+    display_columns:
+      - { field: "title", label: "Заголовок", width: "35%" }
+      - { field: "registration_number", label: "Рег. номер", width: "15%" }
+      - { field: "priority", label: "Приоритет", width: "15%" }
+      - { field: "created_at", label: "Создан", width: "20%", format: "datetime" }
+
+  actions:
+    take:
+      label: "Взять на контроль"
+      log_message: "Документ взят на контроль"
+
+    approve:
+      label: "Утвердить"
+      log_message: "Документ прошёл контроль"
+
+    return:
+      label: "Вернуть"
+      requires_fields: ["comment"]
+      log_message: "Документ возвращён контролёром"
+
+  work_layout:
+    type: "split-panel"
+    left:
+      title: "Документ"
+      fields:
+        - { field: "title", readonly: true }
+        - { field: "registration_number", readonly: true }
+        - { field: "content", type: "textarea", readonly: true }
+    right:
+      title: "Контроль"
+      fields:
+        - { field: "comment", type: "textarea", label: "Замечания" }

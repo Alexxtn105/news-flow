@@ -1,0 +1,54 @@
+workspace:
+  code: "translator"
+  name: "Рабочее место переводчика"
+  description: "Перевод иноязычных материалов"
+  required_role: "Translator"
+
+  input_queue:
+    entity: "Material"
+    filter:
+      status: "New"
+      assigned_to: null
+    sort:
+      - field: "priority"
+        direction: "desc"
+      - field: "received_at"
+        direction: "asc"
+    display_columns:
+      - { field: "title", label: "Заголовок", width: "30%" }
+      - { field: "source.name", label: "Источник", width: "15%" }
+      - { field: "original_language.name", label: "Язык", width: "10%" }
+      - { field: "received_at", label: "Поступил", width: "15%", format: "datetime" }
+      - { field: "priority", label: "Приоритет", width: "10%" }
+
+  actions:
+    take:
+      label: "Взять в работу"
+      log_message: "Материал взят в перевод"
+
+    save_draft:
+      label: "Сохранить черновик"
+      log_message: "Черновик перевода сохранён"
+
+    complete:
+      label: "Завершить перевод"
+      requires_fields: ["translated_text"]
+      log_message: "Перевод завершён"
+
+    release:
+      label: "Вернуть в очередь"
+      log_message: "Материал возвращён в очередь перевода"
+
+  work_layout:
+    type: "split-panel"
+    left:
+      title: "Оригинал"
+      fields:
+        - { field: "title", readonly: true }
+        - { field: "source.name", readonly: true }
+        - { field: "original_language.name", readonly: true }
+        - { field: "original_text", type: "textarea", readonly: true }
+    right:
+      title: "Перевод"
+      fields:
+        - { field: "translated_text", type: "textarea", required: true, placeholder: "Введите перевод..." }

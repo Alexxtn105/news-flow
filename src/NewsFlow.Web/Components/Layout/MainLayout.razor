@@ -1,0 +1,103 @@
+@inherits LayoutComponentBase
+@inject AuthStateService Auth
+@inject NavigationManager Nav
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@if (!Auth.IsAuthenticated)
+{
+    @Body
+}
+else
+{
+    <MudLayout>
+        <MudAppBar Elevation="1">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                           OnClick="@ToggleDrawer" />
+            <MudText Typo="Typo.h6" Class="ml-3">NewsFlow</MudText>
+            <MudSpacer />
+            <NewsFlow.Web.Components.Shared.NotificationBell />
+            <MudText Typo="Typo.body2" Class="mr-3">@Auth.CurrentUser?.FullName</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" OnClick="@Logout" />
+        </MudAppBar>
+
+        <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+            <MudNavMenu>
+                <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home">Главная</MudNavLink>
+
+                @if (Auth.HasRole("Translator"))
+                {
+                    <MudNavLink Href="/workspace/translator" Icon="@Icons.Material.Filled.Translate">Переводчик</MudNavLink>
+                }
+                @if (Auth.HasRole("Analyst"))
+                {
+                    <MudNavLink Href="/workspace/analyst" Icon="@Icons.Material.Filled.Analytics">Аналитик</MudNavLink>
+                }
+                @if (Auth.HasRole("Operator"))
+                {
+                    <MudNavLink Href="/materials" Icon="@Icons.Material.Filled.Upload">Материалы</MudNavLink>
+                }
+                @if (Auth.HasRole("Reviewer"))
+                {
+                    <MudNavLink Href="/workspace/reviewer" Icon="@Icons.Material.Filled.RateReview">Ревьюер</MudNavLink>
+                }
+                @if (Auth.HasRole("Registrar"))
+                {
+                    <MudNavLink Href="/workspace/registrar" Icon="@Icons.Material.Filled.AppRegistration">Регистратор</MudNavLink>
+                }
+                @if (Auth.HasRole("Controller"))
+                {
+                    <MudNavLink Href="/workspace/controller" Icon="@Icons.Material.Filled.FactCheck">Контролёр</MudNavLink>
+                }
+                @if (Auth.HasRole("Evaluator"))
+                {
+                    <MudNavLink Href="/workspace/evaluator" Icon="@Icons.Material.Filled.Star">Оценщик</MudNavLink>
+                }
+
+                @if (Auth.HasRole("Administrator"))
+                {
+                    <MudNavGroup Title="Админ" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
+                        <MudNavLink Href="/admin/users">Пользователи</MudNavLink>
+                        <MudNavLink Href="/admin/sources">Источники</MudNavLink>
+                        <MudNavLink Href="/admin/languages">Языки</MudNavLink>
+                        <MudNavLink Href="/admin/countries">Страны</MudNavLink>
+                        <MudNavLink Href="/admin/tags">Теги</MudNavLink>
+                        <MudNavLink Href="/admin/audit-log">Журнал аудита</MudNavLink>
+                        <MudNavLink Href="/admin/pipelines">Конвейеры</MudNavLink>
+                    </MudNavGroup>
+                }
+            </MudNavMenu>
+        </MudDrawer>
+
+        <MudMainContent>
+            <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+    </MudLayout>
+}
+
+@code {
+    private bool _drawerOpen = true;
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private void Logout()
+    {
+        Auth.Logout();
+        Nav.NavigateTo("/login");
+    }
+
+    protected override void OnInitialized()
+    {
+        Auth.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        Auth.OnChange -= StateHasChanged;
+    }
+}

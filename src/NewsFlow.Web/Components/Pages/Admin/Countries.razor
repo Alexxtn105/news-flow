@@ -1,0 +1,67 @@
+@page "/admin/countries"
+@rendermode InteractiveServer
+@inject ISender Sender
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Страны</PageTitle>
+<MudText Typo="Typo.h5" Class="mb-4">Справочник стран</MudText>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+           OnClick="OpenCreate" Class="mb-3">Добавить страну</MudButton>
+
+<MudTable T="NewsFlow.Application.References.DTOs.CountryDto" Items="_items" Hover="true" Dense="true" Loading="_loading" Striped="true">
+    <HeaderContent>
+        <MudTh>Код</MudTh>
+        <MudTh>Название</MudTh>
+        <MudTh Style="width:80px">Действия</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Code</MudTd>
+        <MudTd>@context.Name</MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                           OnClick="@(() => Delete(context))" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private IReadOnlyList<NewsFlow.Application.References.DTOs.CountryDto> _items = [];
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        _loading = true;
+        _items = await Sender.Send(new NewsFlow.Application.References.Queries.GetCountriesQuery());
+        _loading = false;
+    }
+
+    private async Task OpenCreate()
+    {
+        var parameters = new DialogParameters<CountryEditDialog>();
+        var dialog = await DialogService.ShowAsync<CountryEditDialog>("Новая страна", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var dto = (NewsFlow.Application.References.DTOs.CreateCountryDto)result.Data!;
+            await Sender.Send(new NewsFlow.Application.References.Commands.CreateCountryCommand(dto));
+            Snackbar.Add("Страна добавлена", Severity.Success);
+            await Load();
+        }
+    }
+
+    private async Task Delete(NewsFlow.Application.References.DTOs.CountryDto item)
+    {
+        bool? confirmed = await DialogService.ShowMessageBox("Удаление", $"Удалить «{item.Name}»?", yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed == true)
+        {
+            await Sender.Send(new NewsFlow.Application.References.Commands.DeleteCountryCommand(item.Id));
+            Snackbar.Add("Страна удалена", Severity.Success);
+            await Load();
+        }
+    }
+}

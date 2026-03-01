@@ -1,0 +1,270 @@
+@page "/workspace/{Code}"
+@rendermode InteractiveServer
+@inject ISender Sender
+@inject ISnackbar Snackbar
+@inject NewsFlow.Application.Common.Interfaces.IWorkspaceProvider WorkspaceProvider
+@inject NewsFlow.Application.Common.Interfaces.IPipelineProvider PipelineProvider
+
+@if (_workspace == null)
+{
+    <MudAlert Severity="Severity.Warning">Рабочее место "@Code" не найдено</MudAlert>
+}
+else
+{
+    <PageTitle>@_workspace.Name</PageTitle>
+    <MudText Typo="Typo.h5" Class="mb-4">@_workspace.Name</MudText>
+
+    <MudGrid>
+        <MudItem xs="12" md="5">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-2">Очередь</MudText>
+                <MudTable T="NewsFlow.Application.Documents.DTOs.DocumentListItemDto"
+                          Items="_queue" Hover="true" Dense="true" Loading="_loading"
+                          OnRowClick="@(args => SelectDocument(args.Item))">
+                    <HeaderContent>
+                        <MudTh>Заголовок</MudTh>
+                        <MudTh>Рег. номер</MudTh>
+                        <MudTh>Приоритет</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Title</MudTd>
+                        <MudTd>@(context.RegistrationNumber ?? "—")</MudTd>
+                        <MudTd>
+                            <MudChip T="string" Size="Size.Small" Color="GetPriorityColor(context.Priority)">
+                                @context.Priority
+                            </MudChip>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+                <MudButton Variant="Variant.Text" OnClick="LoadQueue" Class="mt-2">Обновить</MudButton>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="7">
+            @if (_selectedDoc != null)
+            {
+                <MudPaper Class="pa-4" Elevation="2">
+                    <MudText Typo="Typo.h6">@_selectedDoc.Title</MudText>
+                    @if (!string.IsNullOrEmpty(_selectedDoc.RegistrationNumber))
+                    {
+                        <MudText Typo="Typo.caption">Рег. номер: @_selectedDoc.RegistrationNumber</MudText>
+                    }
+                    <MudDivider Class="my-2" />
+
+                    <MudTextField Value="@_selectedDoc.Content" Lines="10" ReadOnly="true"
+                                  Label="Текст документа" Variant="Variant.Outlined" Class="mb-3" />
+
+                    @if (_selectedDoc.Comments.Any())
+                    {
+                        <MudText Typo="Typo.subtitle2" Class="mt-2">Замечания</MudText>
+                        @foreach (var comment in _selectedDoc.Comments)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-1">
+                                @comment.Text <MudText Typo="Typo.caption">— @comment.CreatedAt.ToString("dd.MM.yyyy HH:mm")</MudText>
+                            </MudAlert>
+                        }
+                    }
+
+                    @* Dynamic fields based on workspace actions *@
+                    @foreach (var action in _workspace.Actions)
+                    {
+                        @if (action.RequiresFields != null)
+                        {
+                            @foreach (var field in action.RequiresFields)
+                            {
+                                @if (field == "comment" && !_inputFields.ContainsKey("comment"))
+                                {
+                                    _inputFields["comment"] = "";
+                                }
+                                @if (field == "registration_number" && !_inputFields.ContainsKey("registration_number"))
+                                {
+                                    _inputFields["registration_number"] = "";
+                                }
+                                @if (field == "evaluation_score" && !_inputFields.ContainsKey("evaluation_score"))
+                                {
+                                    _inputFields["evaluation_score"] = "";
+                                }
+                                @if (field == "evaluation_comment" && !_inputFields.ContainsKey("evaluation_comment"))
+                                {
+                                    _inputFields["evaluation_comment"] = "";
+                                }
+                            }
+                        }
+                    }
+
+                    @if (_inputFields.ContainsKey("registration_number"))
+                    {
+                        <MudTextField @bind-Value="_registrationNumber" Label="Регистрационный номер"
+                                      Variant="Variant.Outlined" Class="mt-2" />
+                    }
+                    @if (_inputFields.ContainsKey("comment"))
+                    {
+                        <MudTextField @bind-Value="_comment" Label="Замечания" Lines="3"
+                                      Variant="Variant.Outlined" Class="mt-2" />
+                    }
+                    @if (_inputFields.ContainsKey("evaluation_score"))
+                    {
+                        <MudNumericField @bind-Value="_evaluationScore" Label="Оценка (1-5)" Min="1" Max="5"
+                                         Variant="Variant.Outlined" Class="mt-2" />
+                        <MudTextField @bind-Value="_evaluationComment" Label="Комментарий к оценке" Lines="2"
+                                      Variant="Variant.Outlined" Class="mt-2" />
+                    }
+
+                    <MudStack Row="true" Class="mt-3" Justify="Justify.FlexEnd">
+                        @if (!_taken)
+                        {
+                            @foreach (var action in _workspace.Actions.Where(a => a.Code == "take"))
+                            {
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                           OnClick="@(() => ExecuteAction(action.Code))">
+                                    @action.Label
+                                </MudButton>
+                            }
+                        }
+                        else
+                        {
+                            @foreach (var action in _workspace.Actions.Where(a => a.Code != "take"))
+                            {
+                                var color = action.Code switch
+                                {
+                                    "approve" or "register" or "evaluate" => Color.Success,
+                                    "return" => Color.Warning,
+                                    _ => Color.Primary
+                                };
+                                var variant = action.Code == "return" ? Variant.Outlined : Variant.Filled;
+                                <MudButton Variant="@variant" Color="@color"
+                                           OnClick="@(() => ExecuteAction(action.Code))">
+                                    @action.Label
+                                </MudButton>
+                            }
+                        }
+                    </MudStack>
+                </MudPaper>
+            }
+            else
+            {
+                <MudPaper Class="pa-8 d-flex align-center justify-center" Elevation="1" Style="min-height:300px">
+                    <MudText Color="Color.Secondary">Выберите документ из очереди</MudText>
+                </MudPaper>
+            }
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public string Code { get; set; } = "";
+
+    private NewsFlow.Application.Common.Interfaces.WorkspaceInfo? _workspace;
+    private List<NewsFlow.Application.Documents.DTOs.DocumentListItemDto> _queue = [];
+    private NewsFlow.Application.Documents.DTOs.DocumentDto? _selectedDoc;
+    private bool _loading;
+    private bool _taken;
+    private Dictionary<string, string> _inputFields = [];
+
+    private string _comment = "";
+    private string _registrationNumber = "";
+    private int _evaluationScore = 3;
+    private string _evaluationComment = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _workspace = WorkspaceProvider.GetWorkspace(Code);
+        if (_workspace != null)
+            await LoadQueue();
+    }
+
+    private async Task LoadQueue()
+    {
+        if (_workspace == null) return;
+        _loading = true;
+        try
+        {
+            var result = await Sender.Send(new NewsFlow.Application.Workspaces.Queries.GetWorkspaceQueueQuery(Code));
+            _queue = result.Items
+                .OfType<NewsFlow.Application.Documents.DTOs.DocumentListItemDto>()
+                .ToList();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SelectDocument(NewsFlow.Application.Documents.DTOs.DocumentListItemDto item)
+    {
+        _selectedDoc = await Sender.Send(new NewsFlow.Application.Documents.Queries.GetDocumentByIdQuery(item.Id));
+        _taken = false;
+        _comment = "";
+        _registrationNumber = "";
+        _evaluationScore = 3;
+        _evaluationComment = "";
+
+        // Detect required fields
+        _inputFields.Clear();
+        if (_workspace != null)
+        {
+            foreach (var action in _workspace.Actions)
+            {
+                if (action.RequiresFields != null)
+                {
+                    foreach (var f in action.RequiresFields)
+                        _inputFields.TryAdd(f, "");
+                }
+            }
+        }
+    }
+
+    private async Task ExecuteAction(string actionCode)
+    {
+        if (_selectedDoc == null) return;
+        try
+        {
+            var fields = new Dictionary<string, string>();
+            if (!string.IsNullOrWhiteSpace(_comment)) fields["comment"] = _comment;
+            if (!string.IsNullOrWhiteSpace(_registrationNumber)) fields["registration_number"] = _registrationNumber;
+            if (_inputFields.ContainsKey("evaluation_score"))
+            {
+                fields["evaluation_score"] = _evaluationScore.ToString();
+                if (!string.IsNullOrWhiteSpace(_evaluationComment))
+                    fields["evaluation_comment"] = _evaluationComment;
+            }
+
+            var result = await Sender.Send(new NewsFlow.Application.Workspaces.Commands.ExecuteWorkspaceActionCommand(
+                Code, actionCode, _selectedDoc.Id, fields));
+
+            if (result.Success)
+            {
+                Snackbar.Add(result.Message, Severity.Success);
+
+                if (actionCode == "take")
+                {
+                    _taken = true;
+                    // Reload doc to get updated state
+                    _selectedDoc = await Sender.Send(
+                        new NewsFlow.Application.Documents.Queries.GetDocumentByIdQuery(_selectedDoc.Id));
+                }
+                else
+                {
+                    _selectedDoc = null;
+                    _taken = false;
+                    await LoadQueue();
+                }
+            }
+            else
+            {
+                Snackbar.Add(result.Message, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private Color GetPriorityColor(NewsFlow.Domain.Enums.Priority p) => p switch
+    {
+        NewsFlow.Domain.Enums.Priority.Urgent => Color.Error,
+        NewsFlow.Domain.Enums.Priority.High => Color.Warning,
+        _ => Color.Default
+    };
+}

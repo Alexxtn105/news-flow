@@ -1,0 +1,47 @@
+workspace:
+  code: "reviewer"
+  name: "Рабочее место ревьюера"
+  description: "Проверка качества подготовленных документов"
+  required_role: "Reviewer"
+
+  input_queue:
+    entity: "Document"
+    filter:
+      status: "Draft"
+      assigned_to: null
+    sort:
+      - field: "priority"
+        direction: "desc"
+      - field: "created_at"
+        direction: "asc"
+    display_columns:
+      - { field: "title", label: "Заголовок", width: "40%" }
+      - { field: "priority", label: "Приоритет", width: "15%" }
+      - { field: "created_at", label: "Создан", width: "20%", format: "datetime" }
+
+  actions:
+    take:
+      label: "Взять на ревью"
+      log_message: "Документ взят на ревью"
+
+    approve:
+      label: "Одобрить"
+      log_message: "Документ одобрен"
+
+    return:
+      label: "Вернуть на доработку"
+      requires_fields: ["comment"]
+      log_message: "Документ возвращён на доработку"
+
+  work_layout:
+    type: "split-panel"
+    left:
+      title: "Документ"
+      fields:
+        - { field: "title", readonly: true }
+        - { field: "content", type: "textarea", readonly: true }
+        - { field: "source_materials", type: "list", readonly: true }
+    right:
+      title: "Рецензия"
+      fields:
+        - { field: "comment", type: "textarea", label: "Замечания" }

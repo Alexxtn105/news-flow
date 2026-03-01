@@ -1,0 +1,134 @@
+pipeline:
+  code: "material_default"
+  name: "Стандартный конвейер материала"
+  entity: "Material"
+  version: 1
+
+  statuses:
+    - code: "New"
+      name: "Новый"
+      type: "initial"
+      color: "#2196F3"
+
+    - code: "InTranslation"
+      name: "На переводе"
+      type: "intermediate"
+      is_locked: true
+      color: "#FF9800"
+
+    - code: "ReturnedFromTranslation"
+      name: "Возвращён с перевода"
+      type: "returned"
+      color: "#F44336"
+
+    - code: "Translated"
+      name: "Переведён"
+      type: "intermediate"
+      color: "#4CAF50"
+
+    - code: "InAnalysis"
+      name: "В анализе"
+      type: "intermediate"
+      is_locked: true
+      color: "#FF9800"
+
+    - code: "ReturnedFromAnalysis"
+      name: "Возвращён из анализа"
+      type: "returned"
+      color: "#F44336"
+
+    - code: "Processed"
+      name: "Обработан"
+      type: "terminal"
+      color: "#009688"
+
+    - code: "Rejected"
+      name: "Отбракован"
+      type: "terminal"
+      color: "#9E9E9E"
+
+  transitions:
+    - from: "New"
+      to: "InTranslation"
+      action: "take"
+      label: "Взять в перевод"
+      required_role: "Translator"
+      lock_to_user: true
+      log_message: "Материал взят в перевод"
+
+    - from: "InTranslation"
+      to: "Translated"
+      action: "complete"
+      label: "Завершить перевод"
+      required_role: "Translator"
+      only_assigned_user: true
+      unlock: true
+      requires_fields: ["translated_text"]
+      log_message: "Перевод завершён"
+
+    - from: "InTranslation"
+      to: "New"
+      action: "release"
+      label: "Вернуть в очередь"
+      required_role: "Translator"
+      only_assigned_user: true
+      unlock: true
+      log_message: "Материал возвращён в очередь перевода"
+
+    - from: "ReturnedFromTranslation"
+      to: "InTranslation"
+      action: "take"
+      label: "Взять повторно"
+      required_role: "Translator"
+      lock_to_user: true
+      log_message: "Материал взят повторно на перевод"
+
+    - from: "Translated"
+      to: "InAnalysis"
+      action: "take"
+      label: "Взять в анализ"
+      required_role: "Analyst"
+      lock_to_user: true
+      log_message: "Материал взят в анализ"
+
+    - from: "InAnalysis"
+      to: "Processed"
+      action: "complete"
+      label: "Завершить анализ"
+      required_role: "Analyst"
+      only_assigned_user: true
+      unlock: true
+      log_message: "Анализ материала завершён"
+
+    - from: "InAnalysis"
+      to: "Translated"
+      action: "release"
+      label: "Вернуть в очередь"
+      required_role: "Analyst"
+      only_assigned_user: true
+      unlock: true
+      log_message: "Материал возвращён в очередь анализа"
+
+    - from: "ReturnedFromAnalysis"
+      to: "InAnalysis"
+      action: "take"
+      label: "Взять повторно"
+      required_role: "Analyst"
+      lock_to_user: true
+      log_message: "Материал взят повторно на анализ"
+
+    - from:
+        - "New"
+        - "InTranslation"
+        - "Translated"
+        - "InAnalysis"
+      to: "Rejected"
+      action: "reject"
+      label: "Отбраковать"
+      requires_fields: ["rejection_reason"]
+      log_message: "Материал отбракован"
+
+  lock_timeout:
+    duration_hours: 4
+    fallback_status: "$previous"
+    notify: true

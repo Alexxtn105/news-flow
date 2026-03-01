@@ -1,0 +1,30 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="Name" Label="Название" Variant="Variant.Outlined" Class="mb-2" />
+        <MudTextField @bind-Value="Category" Label="Категория" Variant="Variant.Outlined" Class="mb-2" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit">
+            @(IsEdit ? "Сохранить" : "Создать")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public string Category { get; set; } = "";
+    [Parameter] public bool IsEdit { get; set; }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        if (IsEdit)
+            MudDialog.Close(DialogResult.Ok(new NewsFlow.Application.References.DTOs.UpdateTagDto(Name, Category)));
+        else
+            MudDialog.Close(DialogResult.Ok(new NewsFlow.Application.References.DTOs.CreateTagDto(Name, Category)));
+    }
+}

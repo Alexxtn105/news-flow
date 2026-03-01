@@ -1,0 +1,83 @@
+@inject ISender Sender
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="Username" Label="Логин" Variant="Variant.Outlined" ReadOnly="IsEdit" Class="mb-2" />
+        <MudTextField @bind-Value="FullName" Label="ФИО" Variant="Variant.Outlined" Class="mb-2" />
+        <MudTextField @bind-Value="_password" Label="@(IsEdit ? "Новый пароль (оставьте пустым)" : "Пароль")"
+                      InputType="InputType.Password" Variant="Variant.Outlined" Class="mb-2" />
+        @if (IsEdit)
+        {
+            <MudSwitch @bind-Value="IsActive" Label="Активен" Color="Color.Success" Class="mb-2" />
+        }
+        <MudSelect T="string" Label="Роли" MultiSelection="true" @bind-SelectedValues="_selectedRoles"
+                   Variant="Variant.Outlined" Class="mb-2">
+            @foreach (var r in AllRoles)
+            {
+                <MudSelectItem T="string" Value="@r.Name">@r.Name</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSelect T="string" Label="Языки" MultiSelection="true" @bind-SelectedValues="_selectedLanguages"
+                   Variant="Variant.Outlined" Class="mb-2">
+            @foreach (var l in AllLanguages)
+            {
+                <MudSelectItem T="string" Value="@l.Code">@l.Name (@l.Code)</MudSelectItem>
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit">
+            @(IsEdit ? "Сохранить" : "Создать")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public Guid? UserId { get; set; }
+    [Parameter] public string Username { get; set; } = "";
+    [Parameter] public string FullName { get; set; } = "";
+    [Parameter] public bool IsActive { get; set; } = true;
+    [Parameter] public List<string> SelectedRoleNames { get; set; } = [];
+    [Parameter] public List<string> SelectedLanguageCodes { get; set; } = [];
+    [Parameter] public IReadOnlyList<NewsFlow.Application.References.DTOs.RoleDto> AllRoles { get; set; } = [];
+    [Parameter] public IReadOnlyList<NewsFlow.Application.References.DTOs.LanguageDto> AllLanguages { get; set; } = [];
+    [Parameter] public bool IsEdit { get; set; }
+
+    private string _password = "";
+    private IEnumerable<string> _selectedRoles = [];
+    private IEnumerable<string> _selectedLanguages = [];
+
+    protected override void OnInitialized()
+    {
+        _selectedRoles = SelectedRoleNames;
+        _selectedLanguages = SelectedLanguageCodes;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        var roleIds = AllRoles.Where(r => _selectedRoles.Contains(r.Name)).Select(r => r.Id).ToList();
+        var langIds = AllLanguages.Where(l => _selectedLanguages.Contains(l.Code)).Select(l => l.Id).ToList();
+
+        if (IsEdit)
+        {
+            var dto = new NewsFlow.Application.Users.DTOs.UpdateUserDto(
+                FullName: FullName,
+                IsActive: IsActive,
+                Password: string.IsNullOrWhiteSpace(_password) ? null : _password,
+                RoleIds: roleIds,
+                LanguageIds: langIds);
+            MudDialog.Close(DialogResult.Ok(dto));
+        }
+        else
+        {
+            var dto = new NewsFlow.Application.Users.DTOs.CreateUserDto(
+                Username, _password, FullName, roleIds, langIds);
+            MudDialog.Close(DialogResult.Ok(dto));
+        }
+    }
+}

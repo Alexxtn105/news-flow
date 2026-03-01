@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NewsFlow.Api/NewsFlow.Api.csproj" />
+    <Project Path="src/NewsFlow.Application/NewsFlow.Application.csproj" />
+    <Project Path="src/NewsFlow.Domain/NewsFlow.Domain.csproj" />
+    <Project Path="src/NewsFlow.Infrastructure.Yaml/NewsFlow.Infrastructure.Yaml.csproj" />
+    <Project Path="src/NewsFlow.Infrastructure/NewsFlow.Infrastructure.csproj" />
+    <Project Path="src/NewsFlow.Web/NewsFlow.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NewsFlow.Api.Tests/NewsFlow.Api.Tests.csproj" />
+    <Project Path="tests/NewsFlow.Application.Tests/NewsFlow.Application.Tests.csproj" />
+    <Project Path="tests/NewsFlow.Domain.Tests/NewsFlow.Domain.Tests.csproj" />
+    <Project Path="tests/NewsFlow.Infrastructure.Tests/NewsFlow.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

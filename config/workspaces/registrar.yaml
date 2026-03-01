@@ -1,0 +1,42 @@
+workspace:
+  code: "registrar"
+  name: "Рабочее место регистратора"
+  description: "Регистрация и присвоение номеров документам"
+  required_role: "Registrar"
+
+  input_queue:
+    entity: "Document"
+    filter:
+      status: "Reviewed"
+      assigned_to: null
+    sort:
+      - field: "priority"
+        direction: "desc"
+      - field: "created_at"
+        direction: "asc"
+    display_columns:
+      - { field: "title", label: "Заголовок", width: "40%" }
+      - { field: "priority", label: "Приоритет", width: "15%" }
+      - { field: "created_at", label: "Создан", width: "20%", format: "datetime" }
+
+  actions:
+    take:
+      label: "Взять на регистрацию"
+      log_message: "Документ взят на регистрацию"
+
+    register:
+      label: "Зарегистрировать"
+      requires_fields: ["registration_number"]
+      log_message: "Документу присвоен регистрационный номер"
+
+  work_layout:
+    type: "split-panel"
+    left:
+      title: "Документ"
+      fields:
+        - { field: "title", readonly: true }
+        - { field: "content", type: "textarea", readonly: true }
+    right:
+      title: "Регистрация"
+      fields:
+        - { field: "registration_number", type: "text", required: true, label: "Регистрационный номер" }

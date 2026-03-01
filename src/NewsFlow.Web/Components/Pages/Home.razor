@@ -1,0 +1,55 @@
+@page "/home"
+@rendermode InteractiveServer
+@inject AuthStateService Auth
+
+<PageTitle>NewsFlow - Главная</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Добро пожаловать, @Auth.CurrentUser?.FullName</MudText>
+
+<MudGrid>
+    @if (Auth.HasRole("Translator"))
+    {
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard>
+                <MudCardContent>
+                    <MudIcon Icon="@Icons.Material.Filled.Translate" Size="Size.Large" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6">Переводчик</MudText>
+                    <MudText Typo="Typo.body2">Перевод иноязычных материалов</MudText>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Href="/workspace/translator" Variant="Variant.Text" Color="Color.Primary">Открыть</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    }
+    @if (Auth.HasRole("Analyst"))
+    {
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard>
+                <MudCardContent>
+                    <MudIcon Icon="@Icons.Material.Filled.Analytics" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.h6">Аналитик</MudText>
+                    <MudText Typo="Typo.body2">Анализ материалов и подготовка документов</MudText>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Href="/workspace/analyst" Variant="Variant.Text" Color="Color.Primary">Открыть</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    }
+    @if (Auth.HasRole("Administrator"))
+    {
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard>
+                <MudCardContent>
+                    <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Large" Color="Color.Tertiary" />
+                    <MudText Typo="Typo.h6">Администрирование</MudText>
+                    <MudText Typo="Typo.body2">Управление пользователями и справочниками</MudText>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Href="/admin/users" Variant="Variant.Text" Color="Color.Primary">Открыть</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>

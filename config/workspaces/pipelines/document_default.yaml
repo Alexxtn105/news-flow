@@ -1,0 +1,201 @@
+pipeline:
+  code: "document_default"
+  name: "Стандартный конвейер документа"
+  description: "Полный цикл: черновик → ревью → регистрация → контроль → оценка"
+  entity: "Document"
+  version: 1
+
+  statuses:
+    - code: "Draft"
+      name: "Черновик"
+      type: "initial"
+      color: "#2196F3"
+
+    - code: "InReview"
+      name: "На ревью"
+      type: "intermediate"
+      is_locked: true
+      color: "#FF9800"
+
+    - code: "ReturnedForRevision"
+      name: "Возвращён на доработку"
+      type: "returned"
+      color: "#F44336"
+
+    - code: "Reviewed"
+      name: "Проверен"
+      type: "intermediate"
+      color: "#4CAF50"
+
+    - code: "InRegistration"
+      name: "На регистрации"
+      type: "intermediate"
+      is_locked: true
+      color: "#FF9800"
+
+    - code: "Registered"
+      name: "Зарегистрирован"
+      type: "intermediate"
+      color: "#4CAF50"
+
+    - code: "InControl"
+      name: "На контроле"
+      type: "intermediate"
+      is_locked: true
+      color: "#FF9800"
+
+    - code: "ReturnedForControl"
+      name: "Возвращён на доработку (контроль)"
+      type: "returned"
+      color: "#F44336"
+
+    - code: "Controlled"
+      name: "Проконтролирован"
+      type: "intermediate"
+      color: "#4CAF50"
+
+    - code: "InEvaluation"
+      name: "На оценке"
+      type: "intermediate"
+      is_locked: true
+      color: "#FF9800"
+
+    - code: "Evaluated"
+      name: "Оценён"
+      type: "terminal"
+      color: "#009688"
+
+    - code: "Cancelled"
+      name: "Отменён"
+      type: "terminal"
+      color: "#9E9E9E"
+
+  transitions:
+    - from: "Draft"
+      to: "InReview"
+      action: "take"
+      label: "Взять на ревью"
+      required_role: "Reviewer"
+      lock_to_user: true
+      log_message: "Документ взят на ревью"
+
+    - from: "InReview"
+      to: "Reviewed"
+      action: "approve"
+      label: "Одобрить"
+      required_role: "Reviewer"
+      only_assigned_user: true
+      unlock: true
+      log_message: "Документ одобрен ревьюером"
+
+    - from: "InReview"
+      to: "ReturnedForRevision"
+      action: "return"
+      label: "Вернуть на доработку"
+      required_role: "Reviewer"
+      only_assigned_user: true
+      unlock: true
+      requires_fields: ["comment"]
+      log_message: "Документ возвращён на доработку"
+
+    - from: "ReturnedForRevision"
+      to: "Draft"
+      action: "revise"
+      label: "Исправить и отправить заново"
+      required_role: "Analyst"
+      creates_version: true
+      log_message: "Документ исправлен и отправлен повторно"
+
+    - from: "Reviewed"
+      to: "InRegistration"
+      action: "take"
+      label: "Взять на регистрацию"
+      required_role: "Registrar"
+      lock_to_user: true
+      log_message: "Документ взят на регистрацию"
+
+    - from: "InRegistration"
+      to: "Registered"
+      action: "register"
+      label: "Зарегистрировать"
+      required_role: "Registrar"
+      only_assigned_user: true
+      unlock: true
+      requires_fields: ["registration_number"]
+      creates_version: true
+      log_message: "Документу присвоен номер"
+
+    - from: "Registered"
+      to: "InControl"
+      action: "take"
+      label: "Взять на контроль"
+      required_role: "Controller"
+      lock_to_user: true
+      log_message: "Документ взят на контроль"
+
+    - from: "InControl"
+      to: "Controlled"
+      action: "approve"
+      label: "Утвердить"
+      required_role: "Controller"
+      only_assigned_user: true
+      unlock: true
+      creates_version: true
+      log_message: "Документ прошёл контроль"
+
+    - from: "InControl"
+      to: "ReturnedForControl"
+      action: "return"
+      label: "Вернуть"
+      required_role: "Controller"
+      only_assigned_user: true
+      unlock: true
+      requires_fields: ["comment"]
+      log_message: "Документ возвращён контролёром"
+
+    - from: "ReturnedForControl"
+      to: "Registered"
+      action: "fix"
+      label: "Исправить"
+      required_role: "Registrar"
+      creates_version: true
+      log_message: "Документ исправлен после контроля"
+
+    - from: "Controlled"
+      to: "InEvaluation"
+      action: "take"
+      label: "Взять на оценку"
+      required_role: "Evaluator"
+      lock_to_user: true
+      log_message: "Документ взят на оценку"
+
+    - from: "InEvaluation"
+      to: "Evaluated"
+      action: "evaluate"
+      label: "Оценить"
+      required_role: "Evaluator"
+      only_assigned_user: true
+      unlock: true
+      requires_fields: ["evaluation_score"]
+      optional_fields: ["evaluation_comment"]
+      creates_version: true
+      log_message: "Документ оценён"
+
+    - from:
+        - "Draft"
+        - "Reviewed"
+        - "Registered"
+        - "Controlled"
+        - "ReturnedForRevision"
+        - "ReturnedForControl"
+      to: "Cancelled"
+      action: "cancel"
+      label: "Отменить"
+      required_role: "Administrator"
+      requires_fields: ["comment"]
+      log_message: "Документ отменён"
+
+  lock_timeout:
+    duration_hours: 4
+    fallback_status: "$previous"
+    notify: true

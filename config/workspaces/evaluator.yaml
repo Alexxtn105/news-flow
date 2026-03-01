@@ -1,0 +1,45 @@
+workspace:
+  code: "evaluator"
+  name: "Рабочее место оценщика"
+  description: "Оценка документов"
+  required_role: "Evaluator"
+
+  input_queue:
+    entity: "Document"
+    filter:
+      status: "Controlled"
+      assigned_to: null
+    sort:
+      - field: "priority"
+        direction: "desc"
+      - field: "created_at"
+        direction: "asc"
+    display_columns:
+      - { field: "title", label: "Заголовок", width: "35%" }
+      - { field: "registration_number", label: "Рег. номер", width: "15%" }
+      - { field: "priority", label: "Приоритет", width: "15%" }
+      - { field: "created_at", label: "Создан", width: "20%", format: "datetime" }
+
+  actions:
+    take:
+      label: "Взять на оценку"
+      log_message: "Документ взят на оценку"
+
+    evaluate:
+      label: "Оценить"
+      requires_fields: ["evaluation_score"]
+      log_message: "Документ оценён"
+
+  work_layout:
+    type: "split-panel"
+    left:
+      title: "Документ"
+      fields:
+        - { field: "title", readonly: true }
+        - { field: "registration_number", readonly: true }
+        - { field: "content", type: "textarea", readonly: true }
+    right:
+      title: "Оценка"
+      fields:
+        - { field: "evaluation_score", type: "number", required: true, label: "Балл (1-5)" }
+        - { field: "evaluation_comment", type: "textarea", label: "Комментарий к оценке" }
