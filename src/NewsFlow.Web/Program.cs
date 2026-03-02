@@ -1,5 +1,6 @@
 using MudBlazor.Services;
 using NewsFlow.Application.DependencyInjection;
+using NewsFlow.Infrastructure;
 using NewsFlow.Infrastructure.DependencyInjection;
 using NewsFlow.Infrastructure.Persistence;
 using NewsFlow.Infrastructure.Yaml.DependencyInjection;
@@ -7,6 +8,8 @@ using NewsFlow.Web.Components;
 using NewsFlow.Web.Services;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+
+EnvFileLoader.Load();
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()

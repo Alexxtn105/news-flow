@@ -7,10 +7,13 @@ using NewsFlow.Api.Hubs;
 using NewsFlow.Api.Services;
 using NewsFlow.Application.Common.Interfaces;
 using NewsFlow.Application.DependencyInjection;
+using NewsFlow.Infrastructure;
 using NewsFlow.Infrastructure.DependencyInjection;
 using NewsFlow.Infrastructure.Persistence;
 using NewsFlow.Infrastructure.Yaml.DependencyInjection;
 using Serilog;
+
+EnvFileLoader.Load();
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -34,7 +37,8 @@ try
         workspacesDirectory: configPath);
 
     // JWT Authentication
-    var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "NewsFlowSuperSecretKeyThatIsAtLeast32BytesLong!";
+    var jwtSecret = builder.Configuration["Jwt:Secret"]
+        ?? throw new InvalidOperationException("Jwt:Secret is not configured. Set JWT_SECRET in .env file.");
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {

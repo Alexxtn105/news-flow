@@ -26,30 +26,115 @@
                OnClick="OpenCreateDialog">Загрузить материал</MudButton>
 </MudStack>
 
-<MudTable T="NewsFlow.Application.Materials.DTOs.MaterialListItemDto" ServerData="ServerLoad" @ref="_table"
-          Hover="true" Dense="true" Striped="true">
-    <HeaderContent>
-        <MudTh>Заголовок</MudTh>
-        <MudTh>Язык</MudTh>
-        <MudTh>Источник</MudTh>
-        <MudTh>Страна</MudTh>
-        <MudTh>Статус</MudTh>
-        <MudTh>Приоритет</MudTh>
-        <MudTh>Поступил</MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd>@context.Title</MudTd>
-        <MudTd>@context.OriginalLanguage</MudTd>
-        <MudTd>@context.Source</MudTd>
-        <MudTd>@(context.Country ?? "—")</MudTd>
-        <MudTd><MudChip T="string" Size="Size.Small" Color="GetStatusColor(context.Status)">@context.Status</MudChip></MudTd>
-        <MudTd><MudChip T="string" Size="Size.Small" Color="GetPriorityColor(context.Priority)">@context.Priority</MudChip></MudTd>
-        <MudTd>@context.ReceivedAt.ToString("dd.MM.yyyy HH:mm")</MudTd>
-    </RowTemplate>
-    <PagerContent>
-        <MudTablePager PageSizeOptions="new[]{10, 20, 50}" />
-    </PagerContent>
-</MudTable>
+<MudGrid Spacing="3">
+    <MudItem xs="12" md="@(_preview != null ? 7 : 12)">
+        <div class="materials-page">
+            <MudTable T="NewsFlow.Application.Materials.DTOs.MaterialListItemDto" ServerData="ServerLoad" @ref="_table"
+                      Hover="true" Dense="true" Striped="true"
+                      RowClassFunc="@((item, _) => item.Id == _preview?.Id ? "selected-row" : "")"
+                      OnRowClick="@(args => SelectMaterial(args.Item))">
+                <HeaderContent>
+                    <MudTh>Заголовок</MudTh>
+                    <MudTh>Язык</MudTh>
+                    <MudTh>Источник</MudTh>
+                    <MudTh>Страна</MudTh>
+                    <MudTh>Статус</MudTh>
+                    <MudTh>Приоритет</MudTh>
+                    <MudTh>Поступил</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Title</MudTd>
+                    <MudTd>@context.OriginalLanguage</MudTd>
+                    <MudTd>@context.Source</MudTd>
+                    <MudTd>@(context.Country ?? "—")</MudTd>
+                    <MudTd><MudChip T="string" Size="Size.Small" Color="GetStatusColor(context.Status)">@context.Status</MudChip></MudTd>
+                    <MudTd><MudChip T="string" Size="Size.Small" Color="GetPriorityColor(context.Priority)">@context.Priority</MudChip></MudTd>
+                    <MudTd>@context.ReceivedAt.ToString("dd.MM.yyyy HH:mm")</MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new[]{10, 20, 50}" />
+                </PagerContent>
+            </MudTable>
+        </div>
+    </MudItem>
+
+    @if (_preview != null)
+    {
+        <MudItem xs="12" md="5">
+            <div class="material-preview">
+                <div class="material-preview-header">
+                    <MudText Class="material-preview-title" Style="flex:1;">@_preview.Title</MudText>
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                   OnClick="ClosePreview" Style="color:#888; margin-left:8px;" />
+                </div>
+
+                <div class="material-preview-meta">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="GetStatusColor(_preview.Status)"
+                             Style="font-size:0.75rem;">@_preview.Status</MudChip>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="GetPriorityColor(_preview.Priority)"
+                             Style="font-size:0.75rem;">@_preview.Priority</MudChip>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
+                             Style="font-size:0.75rem;">@_preview.OriginalLanguage</MudChip>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
+                             Style="font-size:0.75rem;">@_preview.Source</MudChip>
+                    @if (!string.IsNullOrEmpty(_preview.Country))
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
+                                 Style="font-size:0.75rem;">@_preview.Country</MudChip>
+                    }
+                </div>
+
+                <MudStack Row="true" Spacing="3" Class="mb-2" Style="font-size:0.8rem; color:#888;">
+                    <span>Поступил: @_preview.ReceivedAt.ToString("dd.MM.yyyy HH:mm")</span>
+                    @if (_preview.EventDate.HasValue)
+                    {
+                        <span>Событие: @_preview.EventDate.Value.ToString("dd.MM.yyyy")</span>
+                    }
+                    @if (!string.IsNullOrEmpty(_preview.Location))
+                    {
+                        <span>Место: @_preview.Location</span>
+                    }
+                </MudStack>
+
+                @if (_preview.Tags.Count > 0)
+                {
+                    <MudStack Row="true" Spacing="1" Class="mb-3" Style="flex-wrap:wrap;">
+                        @foreach (var tag in _preview.Tags)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text"
+                                     Style="font-size:0.7rem; height:20px;">@tag</MudChip>
+                        }
+                    </MudStack>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_preview.TranslatedText))
+                {
+                    <div class="material-preview-label primary">Перевод</div>
+                    <div class="material-preview-text">@_preview.TranslatedText</div>
+                }
+
+                <div class="material-preview-label" style="@(string.IsNullOrWhiteSpace(_preview.TranslatedText) ? "color:#3b82f6;" : "")">
+                    @(string.IsNullOrWhiteSpace(_preview.TranslatedText) ? "Оригинальный текст" : "Оригинал")
+                </div>
+                <div class="material-preview-text" style="@(string.IsNullOrWhiteSpace(_preview.TranslatedText) ? "" : "max-height:200px;")">
+                    @(_preview.OriginalText ?? "—")
+                </div>
+
+                @if (_preview.Attachments.Count > 0)
+                {
+                    <div class="material-preview-label">Вложения (@_preview.Attachments.Count)</div>
+                    <MudStack Row="true" Spacing="1" Style="flex-wrap:wrap;">
+                        @foreach (var att in _preview.Attachments)
+                        {
+                            <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.AttachFile"
+                                     Style="font-size:0.75rem;">@att.FileName</MudChip>
+                        }
+                    </MudStack>
+                }
+            </div>
+        </MudItem>
+    }
+</MudGrid>
 
 @code {
     private MudTable<NewsFlow.Application.Materials.DTOs.MaterialListItemDto>? _table;
@@ -60,6 +145,7 @@
     private IReadOnlyList<NewsFlow.Application.References.DTOs.CountryDto> _countries = [];
     private IReadOnlyList<NewsFlow.Application.References.DTOs.TagDto> _tags = [];
     private bool _initialized;
+    private NewsFlow.Application.Materials.DTOs.MaterialDto? _preview;
 
     protected override async Task OnInitializedAsync()
     {
@@ -85,6 +171,26 @@
             TotalItems = result.TotalCount
         };
     }
+
+    private async Task SelectMaterial(NewsFlow.Application.Materials.DTOs.MaterialListItemDto item)
+    {
+        if (_preview?.Id == item.Id)
+        {
+            _preview = null;
+            return;
+        }
+
+        try
+        {
+            _preview = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialByIdQuery(item.Id));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Ошибка загрузки: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void ClosePreview() => _preview = null;
 
     private async Task Reload() => _table?.ReloadServerData();
     private async Task OnStatusFilterChanged(NewsFlow.Domain.Enums.MaterialStatus? val)

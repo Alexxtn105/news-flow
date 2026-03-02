@@ -1,21 +1,21 @@
 html, body {
-    font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    background: #1a1a2e;
-    color: #e0e0e0;
+    font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: #0a0a0a;
+    color: #e5e5e5;
 }
 
 a, .btn-link {
-    color: #00bcd4;
+    color: #3b82f6;
 }
 
 .btn-primary {
     color: #fff;
-    background-color: #00bcd4;
-    border-color: #0097a7;
+    background-color: #3b82f6;
+    border-color: #2563eb;
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem rgba(0,188,212,0.3), 0 0 0 0.25rem rgba(0,188,212,0.15);
+    box-shadow: 0 0 0 0.1rem rgba(59, 130, 246, 0.3), 0 0 0 0.25rem rgba(59, 130, 246, 0.15);
 }
 
 .content {
@@ -27,15 +27,15 @@ h1:focus {
 }
 
 .valid.modified:not([type=checkbox]) {
-    outline: 1px solid #66bb6a;
+    outline: 1px solid #22c55e;
 }
 
 .invalid {
-    outline: 1px solid #ef5350;
+    outline: 1px solid #ef4444;
 }
 
 .validation-message {
-    color: #ef5350;
+    color: #ef4444;
 }
 
 .blazor-error-boundary {
@@ -52,6 +52,34 @@ h1:focus {
     border-color: #929292;
 }
 
+/* === Global card/panel style === */
+.nf-panel {
+    background: #141414;
+    border: 1px solid #1e1e1e;
+    border-radius: 12px;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.nf-panel:hover {
+    background: #1a1a1a;
+}
+
+.nf-panel-static {
+    background: #141414;
+    border: 1px solid #1e1e1e;
+    border-radius: 12px;
+}
+
+/* === Section headers === */
+.nf-section-header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #3b82f6;
+    margin-bottom: 8px;
+}
+
 /* === Analyst workspace compact styles === */
 .analyst-workspace .mud-table-cell {
     padding: 4px 8px !important;
@@ -63,15 +91,15 @@ h1:focus {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #9e9eb8;
+    color: #888888;
 }
 
 .analyst-workspace .mud-table-row:hover {
-    background-color: rgba(0, 188, 212, 0.08) !important;
+    background-color: rgba(59, 130, 246, 0.08) !important;
 }
 
 .analyst-workspace .mud-table-row.selected-row {
-    background-color: rgba(0, 188, 212, 0.15) !important;
+    background-color: rgba(59, 130, 246, 0.15) !important;
 }
 
 .panel-compact {
@@ -83,7 +111,7 @@ h1:focus {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #00bcd4;
+    color: #3b82f6;
     margin-bottom: 8px;
 }
 
@@ -92,7 +120,7 @@ h1:focus {
     flex-wrap: wrap;
     gap: 6px;
     padding: 8px 0;
-    border-top: 1px solid #2a2a45;
+    border-top: 1px solid #222222;
 }
 
 .toolbar-actions .mud-button {
@@ -109,4 +137,126 @@ h1:focus {
     font-family: 'Consolas', 'Courier New', monospace;
     font-size: 0.8125rem;
     line-height: 1.4;
+}
+
+/* === Materials page styles === */
+.materials-page .mud-table-row {
+    cursor: pointer;
+}
+
+.materials-page .mud-table-row:hover {
+    background-color: rgba(59, 130, 246, 0.06) !important;
+}
+
+.materials-page .mud-table-row.selected-row {
+    background-color: rgba(59, 130, 246, 0.12) !important;
+}
+
+/* === Material preview panel === */
+.material-preview {
+    background: #141414;
+    border: 1px solid #1e1e1e;
+    border-radius: 12px;
+    padding: 20px;
+    animation: slideIn 0.2s ease;
+}
+
+.material-preview-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.material-preview-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #e5e5e5;
+    line-height: 1.4;
+}
+
+.material-preview-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.material-preview-text {
+    background: #1c1c1c;
+    border: 1px solid #222222;
+    border-radius: 8px;
+    padding: 16px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: #d4d4d4;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.material-preview-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888888;
+    margin-bottom: 6px;
+    margin-top: 12px;
+}
+
+.material-preview-label.primary {
+    color: #3b82f6;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* === MudBlazor overrides for dark theme === */
+.mud-table {
+    border-radius: 8px !important;
+    overflow: hidden;
+}
+
+.mud-paper {
+    background-color: #141414 !important;
+}
+
+.mud-appbar {
+    border-bottom: 1px solid #1e1e1e;
+}
+
+.mud-drawer {
+    border-right: 1px solid #1e1e1e !important;
+}
+
+.mud-nav-link:hover {
+    background-color: rgba(59, 130, 246, 0.08) !important;
+}
+
+.mud-chip {
+    border-radius: 6px !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #444;
 }

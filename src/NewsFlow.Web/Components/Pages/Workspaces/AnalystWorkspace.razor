@@ -8,7 +8,7 @@
 
 <div class="analyst-workspace">
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-        <MudText Typo="Typo.h6" Style="color:#00bcd4; text-transform:uppercase; letter-spacing:0.08em; font-size:0.95rem;">
+        <MudText Typo="Typo.h6" Style="color:#3b82f6; text-transform:uppercase; letter-spacing:0.08em; font-size:0.95rem;">
             Рабочее место аналитика
         </MudText>
         <MudSpacer />
@@ -21,7 +21,7 @@
     <MudGrid Spacing="2">
         @* === LEFT: Tabs (Materials queue + My documents) === *@
         <MudItem xs="12" md="3">
-            <MudPaper Class="panel-compact" Elevation="0" Style="background:#1e1e36; border:1px solid #2a2a45; height:calc(100vh - 160px); overflow-y:auto;">
+            <MudPaper Class="panel-compact" Elevation="0" Style="background:#141414; border:1px solid #1e1e1e; height:calc(100vh - 160px); overflow-y:auto;">
                 <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true" Dense="true"
                          PanelClass="pa-0" Style="background:transparent;"
                          ActivePanelIndex="_activeTab" ActivePanelIndexChanged="OnTabChanged">
@@ -48,7 +48,7 @@
                                             </MudChip>
                                         }
                                     </MudText>
-                                    <MudText Typo="Typo.caption" Style="font-size:0.7rem; color:#9e9eb8;">@context.Source</MudText>
+                                    <MudText Typo="Typo.caption" Style="font-size:0.7rem; color:#888;">@context.Source</MudText>
                                 </MudTd>
                                 <MudTd>
                                     <MudChip T="string" Size="Size.Small" Color="GetPriorityColor(context.Priority)"
@@ -58,7 +58,7 @@
                                 </MudTd>
                             </RowTemplate>
                             <NoRecordsContent>
-                                <MudText Typo="Typo.caption" Align="Align.Center" Style="color:#9e9eb8;">Нет материалов</MudText>
+                                <MudText Typo="Typo.caption" Align="Align.Center" Style="color:#888;">Нет материалов</MudText>
                             </NoRecordsContent>
                         </MudTable>
                     </MudTabPanel>
@@ -79,7 +79,7 @@
                             <RowTemplate>
                                 <MudTd>
                                     <MudText Typo="Typo.body2" Style="font-size:0.8rem; line-height:1.2;">@context.Title</MudText>
-                                    <MudText Typo="Typo.caption" Style="font-size:0.7rem; color:#9e9eb8;">
+                                    <MudText Typo="Typo.caption" Style="font-size:0.7rem; color:#888;">
                                         @context.CreatedAt.ToString("dd.MM HH:mm")
                                     </MudText>
                                 </MudTd>
@@ -92,7 +92,7 @@
                                 </MudTd>
                             </RowTemplate>
                             <NoRecordsContent>
-                                <MudText Typo="Typo.caption" Align="Align.Center" Style="color:#9e9eb8;">Нет документов</MudText>
+                                <MudText Typo="Typo.caption" Align="Align.Center" Style="color:#888;">Нет документов</MudText>
                             </NoRecordsContent>
                         </MudTable>
                     </MudTabPanel>
@@ -104,7 +104,7 @@
         <MudItem xs="12" md="5">
             @if (_mode == WorkMode.Material && _selected != null)
             {
-                <MudPaper Class="panel-compact" Elevation="0" Style="background:#1e1e36; border:1px solid #2a2a45; height:calc(100vh - 160px); overflow-y:auto;">
+                <MudPaper Class="panel-compact" Elevation="0" Style="background:#141414; border:1px solid #1e1e1e; height:calc(100vh - 160px); overflow-y:auto;">
                     <MudText Typo="Typo.h6">Материал</MudText>
                     <MudText Typo="Typo.body1" Style="font-weight:600; font-size:0.875rem;">@_selected.Title</MudText>
                     <MudStack Row="true" Spacing="2" Class="mt-1 mb-2">
@@ -119,10 +119,10 @@
                                  Style="font-size:0.7rem; height:20px;">@_selected.Priority</MudChip>
                     </MudStack>
 
-                    <MudDivider Class="my-1" Style="border-color:#2a2a45;" />
+                    <MudDivider Class="my-1" Style="border-color:#222;" />
 
                     <div class="text-field-compact">
-                        <MudText Typo="Typo.caption" Style="color:#00bcd4; text-transform:uppercase; font-size:0.7rem;">Перевод</MudText>
+                        <MudText Typo="Typo.caption" Style="color:#3b82f6; text-transform:uppercase; font-size:0.7rem;">Перевод</MudText>
                         <MudTextField Value="@_selected.TranslatedText" Lines="8" ReadOnly="true"
                                       Variant="Variant.Outlined" Margin="Margin.Dense"
                                       Style="font-size:0.8125rem;" Class="mt-1" />
@@ -130,7 +130,7 @@
 
                     <MudExpansionPanels Class="mt-2" Elevation="0">
                         <MudExpansionPanel Text="Оригинал" MaxHeight="200" Dense="true"
-                                           Style="background:#191930; border:1px solid #2a2a45;">
+                                           Style="background:#1c1c1c; border:1px solid #222;">
                             <div class="text-field-compact">
                                 <MudTextField Value="@_selected.OriginalText" Lines="6" ReadOnly="true"
                                               Variant="Variant.Outlined" Margin="Margin.Dense"
@@ -141,7 +141,7 @@
 
                     @if (_selected.Attachments.Count > 0)
                     {
-                        <MudText Typo="Typo.caption" Class="mt-2" Style="color:#00bcd4; text-transform:uppercase; font-size:0.7rem;">
+                        <MudText Typo="Typo.caption" Class="mt-2" Style="color:#3b82f6; text-transform:uppercase; font-size:0.7rem;">
                             Вложения (@_selected.Attachments.Count)
                         </MudText>
                         @foreach (var att in _selected.Attachments)
@@ -154,7 +154,7 @@
             }
             else if (_mode == WorkMode.Document && _editingDoc != null)
             {
-                <MudPaper Class="panel-compact" Elevation="0" Style="background:#1e1e36; border:1px solid #2a2a45; height:calc(100vh - 160px); overflow-y:auto;">
+                <MudPaper Class="panel-compact" Elevation="0" Style="background:#141414; border:1px solid #1e1e1e; height:calc(100vh - 160px); overflow-y:auto;">
                     <MudText Typo="Typo.h6">Исходные материалы</MudText>
                     @foreach (var mat in _editingDoc.SourceMaterials)
                     {
@@ -164,8 +164,8 @@
 
                     @if (_editingDoc.Comments.Any())
                     {
-                        <MudDivider Class="my-2" Style="border-color:#2a2a45;" />
-                        <MudText Typo="Typo.caption" Style="color:#ffa726; text-transform:uppercase; font-size:0.7rem;">Замечания ревьюера</MudText>
+                        <MudDivider Class="my-2" Style="border-color:#222;" />
+                        <MudText Typo="Typo.caption" Style="color:#f59e0b; text-transform:uppercase; font-size:0.7rem;">Замечания ревьюера</MudText>
                         @foreach (var comment in _editingDoc.Comments.OrderByDescending(c => c.CreatedAt))
                         {
                             <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-1" Style="font-size:0.8rem;">
@@ -180,11 +180,11 @@
             }
             else
             {
-                <MudPaper Elevation="0" Style="background:#1e1e36; border:1px solid #2a2a45; height:calc(100vh - 160px);"
+                <MudPaper Elevation="0" Style="background:#141414; border:1px solid #1e1e1e; height:calc(100vh - 160px);"
                           Class="d-flex align-center justify-center">
                     <MudStack AlignItems="AlignItems.Center">
                         <MudIcon Icon="@Icons.Material.Filled.Analytics" Size="Size.Large" Style="color:#2a2a45;" />
-                        <MudText Typo="Typo.caption" Style="color:#555;">Выберите материал или документ</MudText>
+                        <MudText Typo="Typo.caption" Style="color:#666;">Выберите материал или документ</MudText>
                     </MudStack>
                 </MudPaper>
             }
@@ -192,7 +192,7 @@
 
         @* === RIGHT: Document editor === *@
         <MudItem xs="12" md="4">
-            <MudPaper Class="panel-compact" Elevation="0" Style="background:#1e1e36; border:1px solid #2a2a45; height:calc(100vh - 160px); display:flex; flex-direction:column;">
+            <MudPaper Class="panel-compact" Elevation="0" Style="background:#141414; border:1px solid #1e1e1e; height:calc(100vh - 160px); display:flex; flex-direction:column;">
                 <MudText Typo="Typo.h6">
                     @(_mode == WorkMode.Document && _editingDoc != null ? "Редактирование документа" : "Новый документ")
                 </MudText>
