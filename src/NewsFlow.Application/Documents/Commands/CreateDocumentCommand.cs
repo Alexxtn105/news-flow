@@ -26,6 +26,8 @@ public class CreateDocumentHandler : IRequestHandler<CreateDocumentCommand, Docu
             Content = dto.Content,
             Priority = dto.Priority,
             CreatedById = userId,
+            AssignedToId = userId,
+            AssignedAt = DateTime.UtcNow,
         };
 
         foreach (var matId in dto.MaterialIds)

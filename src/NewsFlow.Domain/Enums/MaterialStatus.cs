@@ -9,5 +9,7 @@ public enum MaterialStatus
     InAnalysis = 4,
     ReturnedFromAnalysis = 5,
     Processed = 6,
-    Rejected = 7
+    Rejected = 7,
+    NotOfInterest = 8,
+    Distorted = 9
 }

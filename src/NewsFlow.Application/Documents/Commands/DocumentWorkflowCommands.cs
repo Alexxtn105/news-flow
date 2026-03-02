@@ -3,8 +3,98 @@ using Microsoft.EntityFrameworkCore;
 using NewsFlow.Application.Common.Interfaces;
 using NewsFlow.Application.Documents.DTOs;
 using NewsFlow.Domain.Entities;
+using NewsFlow.Domain.Enums;
 
 namespace NewsFlow.Application.Documents.Commands;
+
+// === Analyst: get my documents ===
+public record GetMyDocumentsQuery() : IRequest<IReadOnlyList<DocumentListItemDto>>;
+
+public class GetMyDocumentsHandler : IRequestHandler<GetMyDocumentsQuery, IReadOnlyList<DocumentListItemDto>>
+{
+    private readonly IApplicationDbContext _db;
+    private readonly ICurrentUserService _cu;
+
+    public GetMyDocumentsHandler(IApplicationDbContext db, ICurrentUserService cu) { _db = db; _cu = cu; }
+
+    public async Task<IReadOnlyList<DocumentListItemDto>> Handle(GetMyDocumentsQuery r, CancellationToken ct)
+    {
+        var userId = _cu.UserId ?? throw new UnauthorizedAccessException();
+        return await _db.Documents
+            .Where(d => d.CreatedById == userId
+                && (d.Status == DocumentStatus.Draft || d.Status == DocumentStatus.ReturnedForRevision))
+            .OrderByDescending(d => d.Priority)
+            .ThenByDescending(d => d.CreatedAt)
+            .Select(d => new DocumentListItemDto(
+                d.Id, d.RegistrationNumber, d.Title, d.Status, d.Priority,
+                d.AssignedTo != null ? d.AssignedTo.FullName : null, d.CreatedAt))
+            .ToListAsync(ct);
+    }
+}
+
+// === Analyst: update document content ===
+public record UpdateDocumentContentCommand(Guid DocumentId, string Title, string Content) : IRequest<DocumentDto>;
+
+public class UpdateDocumentContentHandler : IRequestHandler<UpdateDocumentContentCommand, DocumentDto>
+{
+    private readonly IApplicationDbContext _db;
+    private readonly ICurrentUserService _cu;
+
+    public UpdateDocumentContentHandler(IApplicationDbContext db, ICurrentUserService cu) { _db = db; _cu = cu; }
+
+    public async Task<DocumentDto> Handle(UpdateDocumentContentCommand r, CancellationToken ct)
+    {
+        var userId = _cu.UserId ?? throw new UnauthorizedAccessException();
+        var d = await _db.Documents.Include(d => d.CreatedBy).Include(d => d.AssignedTo)
+            .Include(d => d.SourceMaterials).ThenInclude(sm => sm.Material)
+            .Include(d => d.Comments).ThenInclude(c => c.Author)
+            .FirstOrDefaultAsync(d => d.Id == r.DocumentId, ct)
+            ?? throw new KeyNotFoundException("Document not found");
+
+        if (d.CreatedById != userId)
+            throw new InvalidOperationException("Only the author can edit the document");
+        if (d.Status != DocumentStatus.Draft && d.Status != DocumentStatus.ReturnedForRevision)
+            throw new InvalidOperationException($"Cannot edit document in status {d.Status}");
+
+        d.Title = r.Title;
+        d.Content = r.Content;
+        await _db.SaveChangesAsync(ct);
+        return CreateDocumentHandler.ToDto(d);
+    }
+}
+
+// === Analyst: submit for review ===
+public record SubmitDocumentForReviewCommand(Guid DocumentId) : IRequest<DocumentDto>;
+
+public class SubmitForReviewHandler : IRequestHandler<SubmitDocumentForReviewCommand, DocumentDto>
+{
+    private readonly IApplicationDbContext _db;
+    private readonly ICurrentUserService _cu;
+
+    public SubmitForReviewHandler(IApplicationDbContext db, ICurrentUserService cu) { _db = db; _cu = cu; }
+
+    public async Task<DocumentDto> Handle(SubmitDocumentForReviewCommand r, CancellationToken ct)
+    {
+        var userId = _cu.UserId ?? throw new UnauthorizedAccessException();
+        var d = await _db.Documents.Include(d => d.CreatedBy).Include(d => d.AssignedTo)
+            .Include(d => d.SourceMaterials).ThenInclude(sm => sm.Material)
+            .Include(d => d.Comments).ThenInclude(c => c.Author)
+            .FirstOrDefaultAsync(d => d.Id == r.DocumentId, ct)
+            ?? throw new KeyNotFoundException("Document not found");
+
+        if (d.CreatedById != userId)
+            throw new InvalidOperationException("Only the author can submit the document");
+        if (d.Status != DocumentStatus.Draft && d.Status != DocumentStatus.ReturnedForRevision)
+            throw new InvalidOperationException($"Cannot submit document in status {d.Status}");
+
+        d.Status = DocumentStatus.Draft; // ensure Draft for Reviewer queue
+        d.AssignedToId = null;
+        d.AssignedAt = null;
+        d.CreateVersionSnapshot();
+        await _db.SaveChangesAsync(ct);
+        return CreateDocumentHandler.ToDto(d);
+    }
+}
 
 // === Review ===
 public record TakeDocumentForReviewCommand(Guid DocumentId) : IRequest<DocumentDto>;

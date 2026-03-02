@@ -18,7 +18,13 @@
                     <MudTh>Приоритет</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd>@context.Title</MudTd>
+                    <MudTd>
+                        @context.Title
+                        @if (context.Status == NewsFlow.Domain.Enums.MaterialStatus.InTranslation)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ml-1">в работе</MudChip>
+                        }
+                    </MudTd>
                     <MudTd>@context.OriginalLanguage</MudTd>
                     <MudTd><MudChip T="string" Size="Size.Small" Color="GetPriorityColor(context.Priority)">@context.Priority</MudChip></MudTd>
                 </RowTemplate>
@@ -93,7 +99,7 @@
     {
         _selected = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialByIdQuery(item.Id));
         _translatedText = _selected.TranslatedText ?? "";
-        _taken = false;
+        _taken = _selected.Status == NewsFlow.Domain.Enums.MaterialStatus.InTranslation;
     }
 
     private async Task TakeMaterial()

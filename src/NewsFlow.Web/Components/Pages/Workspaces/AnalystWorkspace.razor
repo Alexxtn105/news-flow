@@ -2,88 +2,350 @@
 @rendermode InteractiveServer
 @inject ISender Sender
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <PageTitle>Аналитик</PageTitle>
-<MudText Typo="Typo.h5" Class="mb-4">Рабочее место аналитика</MudText>
 
-<MudGrid>
-    <MudItem xs="12" md="4">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.h6" Class="mb-2">Переведённые материалы</MudText>
-            <MudTable T="NewsFlow.Application.Materials.DTOs.MaterialListItemDto" Items="_queue" Hover="true" Dense="true" Loading="_loading"
-                      OnRowClick="@(args => SelectMaterial(args.Item))">
-                <HeaderContent>
-                    <MudTh>Заголовок</MudTh>
-                    <MudTh>Источник</MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd>@context.Title</MudTd>
-                    <MudTd>@context.Source</MudTd>
-                </RowTemplate>
-            </MudTable>
-        </MudPaper>
-    </MudItem>
+<div class="analyst-workspace">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudText Typo="Typo.h6" Style="color:#00bcd4; text-transform:uppercase; letter-spacing:0.08em; font-size:0.95rem;">
+            Рабочее место аналитика
+        </MudText>
+        <MudSpacer />
+        <MudTooltip Text="Обновить">
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" OnClick="RefreshAll"
+                           Color="Color.Primary" />
+        </MudTooltip>
+    </MudStack>
 
-    <MudItem xs="12" md="4">
-        @if (_selected != null)
-        {
-            <MudPaper Class="pa-4" Elevation="2">
-                <MudText Typo="Typo.h6">@_selected.Title</MudText>
-                <MudText Typo="Typo.caption">@_selected.Source | @_selected.Country</MudText>
-                <MudDivider Class="my-2" />
-                <MudText Typo="Typo.subtitle2">Перевод</MudText>
-                <MudTextField Value="@_selected.TranslatedText" Lines="10" ReadOnly="true" Variant="Variant.Outlined" />
-                <MudText Typo="Typo.subtitle2" Class="mt-2">Оригинал</MudText>
-                <MudTextField Value="@_selected.OriginalText" Lines="6" ReadOnly="true" Variant="Variant.Outlined" />
+    <MudGrid Spacing="2">
+        @* === LEFT: Tabs (Materials queue + My documents) === *@
+        <MudItem xs="12" md="3">
+            <MudPaper Class="panel-compact" Elevation="0" Style="background:#1e1e36; border:1px solid #2a2a45; height:calc(100vh - 160px); overflow-y:auto;">
+                <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true" Dense="true"
+                         PanelClass="pa-0" Style="background:transparent;"
+                         ActivePanelIndex="_activeTab" ActivePanelIndexChanged="OnTabChanged">
+                    <MudTabPanel Text="Материалы" Icon="@Icons.Material.Filled.Article" Style="font-size:0.75rem;">
+                        <MudTable T="NewsFlow.Application.Materials.DTOs.MaterialListItemDto"
+                                  Items="_queue" Hover="true" Dense="true" Striped="true" FixedHeader="true"
+                                  Loading="_loading" Breakpoint="Breakpoint.None"
+                                  RowClassFunc="@((item, _) => item.Id == _selected?.Id ? "selected-row" : "")"
+                                  OnRowClick="@(args => SelectMaterial(args.Item))"
+                                  Style="background:transparent;">
+                            <HeaderContent>
+                                <MudTh>Материал</MudTh>
+                                <MudTh Style="width:50px;">Прио</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>
+                                    <MudText Typo="Typo.body2" Style="font-size:0.8rem; line-height:1.2;">
+                                        @context.Title
+                                        @if (context.Status == NewsFlow.Domain.Enums.MaterialStatus.InAnalysis)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info"
+                                                     Style="font-size:0.6rem; height:16px; min-height:16px; margin-left:4px;">
+                                                в работе
+                                            </MudChip>
+                                        }
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="font-size:0.7rem; color:#9e9eb8;">@context.Source</MudText>
+                                </MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Size="Size.Small" Color="GetPriorityColor(context.Priority)"
+                                             Style="font-size:0.65rem; height:18px; min-height:18px;">
+                                        @GetPriorityLabel(context.Priority)
+                                    </MudChip>
+                                </MudTd>
+                            </RowTemplate>
+                            <NoRecordsContent>
+                                <MudText Typo="Typo.caption" Align="Align.Center" Style="color:#9e9eb8;">Нет материалов</MudText>
+                            </NoRecordsContent>
+                        </MudTable>
+                    </MudTabPanel>
+
+                    <MudTabPanel Text="Документы" Icon="@Icons.Material.Filled.Description" Style="font-size:0.75rem;"
+                                 BadgeData="@(_myDocs.Count > 0 ? _myDocs.Count.ToString() : null)"
+                                 BadgeColor="Color.Info">
+                        <MudTable T="NewsFlow.Application.Documents.DTOs.DocumentListItemDto"
+                                  Items="_myDocs" Hover="true" Dense="true" Striped="true" FixedHeader="true"
+                                  Breakpoint="Breakpoint.None"
+                                  RowClassFunc="@((item, _) => item.Id == _editingDoc?.Id ? "selected-row" : "")"
+                                  OnRowClick="@(args => SelectDocument(args.Item))"
+                                  Style="background:transparent;">
+                            <HeaderContent>
+                                <MudTh>Документ</MudTh>
+                                <MudTh Style="width:60px;">Статус</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>
+                                    <MudText Typo="Typo.body2" Style="font-size:0.8rem; line-height:1.2;">@context.Title</MudText>
+                                    <MudText Typo="Typo.caption" Style="font-size:0.7rem; color:#9e9eb8;">
+                                        @context.CreatedAt.ToString("dd.MM HH:mm")
+                                    </MudText>
+                                </MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(context.Status == NewsFlow.Domain.Enums.DocumentStatus.ReturnedForRevision ? Color.Warning : Color.Info)"
+                                             Style="font-size:0.6rem; height:16px; min-height:16px;">
+                                        @(context.Status == NewsFlow.Domain.Enums.DocumentStatus.ReturnedForRevision ? "доработка" : "черновик")
+                                    </MudChip>
+                                </MudTd>
+                            </RowTemplate>
+                            <NoRecordsContent>
+                                <MudText Typo="Typo.caption" Align="Align.Center" Style="color:#9e9eb8;">Нет документов</MudText>
+                            </NoRecordsContent>
+                        </MudTable>
+                    </MudTabPanel>
+                </MudTabs>
             </MudPaper>
-        }
-    </MudItem>
+        </MudItem>
 
-    <MudItem xs="12" md="4">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.h6" Class="mb-2">Новый документ</MudText>
-            <MudTextField @bind-Value="_docTitle" Label="Заголовок документа" Variant="Variant.Outlined" Class="mb-2" />
-            <MudTextField @bind-Value="_docContent" Label="Текст документа" Lines="12" Variant="Variant.Outlined" Class="mb-2" />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateDocument"
-                       Disabled="@(_selected == null || string.IsNullOrWhiteSpace(_docTitle))">
-                Создать документ
-            </MudButton>
-        </MudPaper>
-    </MudItem>
-</MudGrid>
+        @* === CENTER: Material details OR Document review comments === *@
+        <MudItem xs="12" md="5">
+            @if (_mode == WorkMode.Material && _selected != null)
+            {
+                <MudPaper Class="panel-compact" Elevation="0" Style="background:#1e1e36; border:1px solid #2a2a45; height:calc(100vh - 160px); overflow-y:auto;">
+                    <MudText Typo="Typo.h6">Материал</MudText>
+                    <MudText Typo="Typo.body1" Style="font-weight:600; font-size:0.875rem;">@_selected.Title</MudText>
+                    <MudStack Row="true" Spacing="2" Class="mt-1 mb-2">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info"
+                                 Style="font-size:0.7rem; height:20px;">@_selected.Source</MudChip>
+                        @if (!string.IsNullOrEmpty(_selected.Country))
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
+                                     Style="font-size:0.7rem; height:20px;">@_selected.Country</MudChip>
+                        }
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="GetPriorityColor(_selected.Priority)"
+                                 Style="font-size:0.7rem; height:20px;">@_selected.Priority</MudChip>
+                    </MudStack>
+
+                    <MudDivider Class="my-1" Style="border-color:#2a2a45;" />
+
+                    <div class="text-field-compact">
+                        <MudText Typo="Typo.caption" Style="color:#00bcd4; text-transform:uppercase; font-size:0.7rem;">Перевод</MudText>
+                        <MudTextField Value="@_selected.TranslatedText" Lines="8" ReadOnly="true"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Style="font-size:0.8125rem;" Class="mt-1" />
+                    </div>
+
+                    <MudExpansionPanels Class="mt-2" Elevation="0">
+                        <MudExpansionPanel Text="Оригинал" MaxHeight="200" Dense="true"
+                                           Style="background:#191930; border:1px solid #2a2a45;">
+                            <div class="text-field-compact">
+                                <MudTextField Value="@_selected.OriginalText" Lines="6" ReadOnly="true"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                                              Style="font-size:0.8125rem;" />
+                            </div>
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+
+                    @if (_selected.Attachments.Count > 0)
+                    {
+                        <MudText Typo="Typo.caption" Class="mt-2" Style="color:#00bcd4; text-transform:uppercase; font-size:0.7rem;">
+                            Вложения (@_selected.Attachments.Count)
+                        </MudText>
+                        @foreach (var att in _selected.Attachments)
+                        {
+                            <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.AttachFile"
+                                     Style="font-size:0.7rem; height:20px;" Class="mr-1">@att.FileName</MudChip>
+                        }
+                    }
+                </MudPaper>
+            }
+            else if (_mode == WorkMode.Document && _editingDoc != null)
+            {
+                <MudPaper Class="panel-compact" Elevation="0" Style="background:#1e1e36; border:1px solid #2a2a45; height:calc(100vh - 160px); overflow-y:auto;">
+                    <MudText Typo="Typo.h6">Исходные материалы</MudText>
+                    @foreach (var mat in _editingDoc.SourceMaterials)
+                    {
+                        <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Article"
+                                 Style="font-size:0.75rem; height:22px;" Class="mr-1 mb-1">@mat.Title</MudChip>
+                    }
+
+                    @if (_editingDoc.Comments.Any())
+                    {
+                        <MudDivider Class="my-2" Style="border-color:#2a2a45;" />
+                        <MudText Typo="Typo.caption" Style="color:#ffa726; text-transform:uppercase; font-size:0.7rem;">Замечания ревьюера</MudText>
+                        @foreach (var comment in _editingDoc.Comments.OrderByDescending(c => c.CreatedAt))
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-1" Style="font-size:0.8rem;">
+                                @comment.Text
+                                <MudText Typo="Typo.caption" Style="font-size:0.65rem;">
+                                    — @comment.Author, @comment.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                                </MudText>
+                            </MudAlert>
+                        }
+                    }
+                </MudPaper>
+            }
+            else
+            {
+                <MudPaper Elevation="0" Style="background:#1e1e36; border:1px solid #2a2a45; height:calc(100vh - 160px);"
+                          Class="d-flex align-center justify-center">
+                    <MudStack AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Analytics" Size="Size.Large" Style="color:#2a2a45;" />
+                        <MudText Typo="Typo.caption" Style="color:#555;">Выберите материал или документ</MudText>
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudItem>
+
+        @* === RIGHT: Document editor === *@
+        <MudItem xs="12" md="4">
+            <MudPaper Class="panel-compact" Elevation="0" Style="background:#1e1e36; border:1px solid #2a2a45; height:calc(100vh - 160px); display:flex; flex-direction:column;">
+                <MudText Typo="Typo.h6">
+                    @(_mode == WorkMode.Document && _editingDoc != null ? "Редактирование документа" : "Новый документ")
+                </MudText>
+
+                <div class="text-field-compact" style="flex:1; display:flex; flex-direction:column;">
+                    <MudTextField @bind-Value="_docTitle" Label="Заголовок" Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" Class="mb-1" Style="font-size:0.8125rem;" />
+                    <MudTextField @bind-Value="_docContent" Label="Текст документа" Lines="14"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Style="font-size:0.8125rem; flex:1;" />
+                </div>
+
+                @* === Action toolbar === *@
+                <div class="toolbar-actions mt-2">
+                    @if (_mode == WorkMode.Material)
+                    {
+                        @if (!_taken)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="TakeForAnalysis" Disabled="@(_selected == null)">
+                                Взять в анализ
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="CreateDocument"
+                                       Disabled="@(_selected == null || string.IsNullOrWhiteSpace(_docTitle))">
+                                Создать документ
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small"
+                                       OnClick="@(() => ShowReasonDialog("Вернуть на перевод", ReturnToTranslation))">
+                                На перевод
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small"
+                                       OnClick="@(() => ShowReasonDialog("Не представляет интереса", MarkNotOfInterest))">
+                                Не интересен
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => ShowReasonDialog("Искажён", MarkDistorted))">
+                                Искажён
+                            </MudButton>
+                            <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small"
+                                       OnClick="ReleaseFromAnalysis">
+                                В очередь
+                            </MudButton>
+                        }
+                    }
+                    else if (_mode == WorkMode.Document && _editingDoc != null)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                   OnClick="SaveDocument"
+                                   Disabled="@(string.IsNullOrWhiteSpace(_docTitle))">
+                            Сохранить
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small"
+                                   OnClick="SubmitForReview"
+                                   Disabled="@(string.IsNullOrWhiteSpace(_docTitle))">
+                            На ревью
+                        </MudButton>
+                    }
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</div>
 
 @code {
+    private enum WorkMode { Material, Document }
+
     private List<NewsFlow.Application.Materials.DTOs.MaterialListItemDto> _queue = [];
+    private List<NewsFlow.Application.Documents.DTOs.DocumentListItemDto> _myDocs = [];
     private NewsFlow.Application.Materials.DTOs.MaterialDto? _selected;
+    private NewsFlow.Application.Documents.DTOs.DocumentDto? _editingDoc;
     private string _docTitle = "";
     private string _docContent = "";
     private bool _loading;
     private bool _taken;
+    private WorkMode _mode = WorkMode.Material;
+    private int _activeTab = 0;
 
-    protected override async Task OnInitializedAsync() => await LoadQueue();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadQueue();
+        await LoadMyDocs();
+    }
+
+    private async Task RefreshAll()
+    {
+        await LoadQueue();
+        await LoadMyDocs();
+    }
 
     private async Task LoadQueue()
     {
         _loading = true;
-        var result = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialsQuery(
-            Status: NewsFlow.Domain.Enums.MaterialStatus.Translated));
+        var result = await Sender.Send(new NewsFlow.Application.Materials.Commands.GetAnalystQueueQuery());
         _queue = result.Items.ToList();
         _loading = false;
+    }
+
+    private async Task LoadMyDocs()
+    {
+        _myDocs = (await Sender.Send(new NewsFlow.Application.Documents.Commands.GetMyDocumentsQuery())).ToList();
+    }
+
+    private void OnTabChanged(int index)
+    {
+        _activeTab = index;
+        if (index == 0)
+        {
+            _editingDoc = null;
+            if (_selected == null) _mode = WorkMode.Material;
+        }
+        else
+        {
+            _selected = null;
+            _taken = false;
+            if (_editingDoc == null) _mode = WorkMode.Document;
+        }
     }
 
     private async Task SelectMaterial(NewsFlow.Application.Materials.DTOs.MaterialListItemDto item)
     {
         _selected = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialByIdQuery(item.Id));
+        _taken = _selected.Status == NewsFlow.Domain.Enums.MaterialStatus.InAnalysis;
+        _editingDoc = null;
+        _mode = WorkMode.Material;
+        _docTitle = "";
+        _docContent = "";
+    }
 
-        if (!_taken)
+    private async Task SelectDocument(NewsFlow.Application.Documents.DTOs.DocumentListItemDto item)
+    {
+        _editingDoc = await Sender.Send(new NewsFlow.Application.Documents.Queries.GetDocumentByIdQuery(item.Id));
+        _selected = null;
+        _taken = false;
+        _mode = WorkMode.Document;
+        _docTitle = _editingDoc.Title;
+        _docContent = _editingDoc.Content;
+    }
+
+    private async Task TakeForAnalysis()
+    {
+        if (_selected == null) return;
+        try
         {
-            try
-            {
-                _selected = await Sender.Send(new NewsFlow.Application.Materials.Commands.TakeMaterialForTranslationCommand(_selected.Id));
-                _taken = true;
-            }
-            catch { /* may already be in different status */ }
+            _selected = await Sender.Send(
+                new NewsFlow.Application.Materials.Commands.TakeMaterialForAnalysisCommand(_selected.Id));
+            _taken = true;
+            Snackbar.Add("Материал взят в анализ", Severity.Success);
         }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
 
     private async Task CreateDocument()
@@ -95,12 +357,140 @@
                 new NewsFlow.Application.Documents.DTOs.CreateDocumentDto(
                     _docTitle, _docContent, [_selected.Id], _selected.Priority)));
             Snackbar.Add($"Документ создан: {doc.Title}", Severity.Success);
-            _selected = null;
-            _taken = false;
+            ResetSelection();
+            await LoadQueue();
+            await LoadMyDocs();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task SaveDocument()
+    {
+        if (_editingDoc == null) return;
+        try
+        {
+            _editingDoc = await Sender.Send(
+                new NewsFlow.Application.Documents.Commands.UpdateDocumentContentCommand(
+                    _editingDoc.Id, _docTitle, _docContent));
+            Snackbar.Add("Документ сохранён", Severity.Success);
+            await LoadMyDocs();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task SubmitForReview()
+    {
+        if (_editingDoc == null) return;
+        try
+        {
+            // Save first if content changed
+            if (_docTitle != _editingDoc.Title || _docContent != _editingDoc.Content)
+            {
+                await Sender.Send(new NewsFlow.Application.Documents.Commands.UpdateDocumentContentCommand(
+                    _editingDoc.Id, _docTitle, _docContent));
+            }
+
+            await Sender.Send(new NewsFlow.Application.Documents.Commands.SubmitDocumentForReviewCommand(_editingDoc.Id));
+            Snackbar.Add("Документ отправлен на ревью", Severity.Success);
+            _editingDoc = null;
             _docTitle = "";
             _docContent = "";
+            await LoadMyDocs();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task ReturnToTranslation(string? reason)
+    {
+        if (_selected == null) return;
+        try
+        {
+            await Sender.Send(new NewsFlow.Application.Materials.Commands.ReturnMaterialToTranslationCommand(
+                _selected.Id, reason));
+            Snackbar.Add("Материал возвращён на перевод", Severity.Info);
+            ResetSelection();
             await LoadQueue();
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
+
+    private async Task MarkNotOfInterest(string? reason)
+    {
+        if (_selected == null) return;
+        try
+        {
+            await Sender.Send(new NewsFlow.Application.Materials.Commands.MarkMaterialNotOfInterestCommand(
+                _selected.Id, reason));
+            Snackbar.Add("Материал отмечен: не представляет интереса", Severity.Info);
+            ResetSelection();
+            await LoadQueue();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task MarkDistorted(string? reason)
+    {
+        if (_selected == null) return;
+        try
+        {
+            await Sender.Send(new NewsFlow.Application.Materials.Commands.MarkMaterialDistortedCommand(
+                _selected.Id, reason));
+            Snackbar.Add("Материал отмечен: искажён", Severity.Info);
+            ResetSelection();
+            await LoadQueue();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task ReleaseFromAnalysis()
+    {
+        if (_selected == null) return;
+        try
+        {
+            await Sender.Send(new NewsFlow.Application.Materials.Commands.ReleaseMaterialFromAnalysisCommand(_selected.Id));
+            Snackbar.Add("Материал возвращён в очередь", Severity.Info);
+            ResetSelection();
+            await LoadQueue();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task ShowReasonDialog(string title, Func<string?, Task> onConfirm)
+    {
+        var parameters = new DialogParameters<ReasonDialog> { { x => x.Title, title } };
+        var options = new DialogOptions
+        {
+            CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true,
+            BackdropClick = false
+        };
+        var dialog = await DialogService.ShowAsync<ReasonDialog>(title, parameters, options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var reason = result.Data as string;
+            await onConfirm(reason);
+        }
+    }
+
+    private void ResetSelection()
+    {
+        _selected = null;
+        _taken = false;
+        _docTitle = "";
+        _docContent = "";
+    }
+
+    private Color GetPriorityColor(NewsFlow.Domain.Enums.Priority p) => p switch
+    {
+        NewsFlow.Domain.Enums.Priority.Urgent => Color.Error,
+        NewsFlow.Domain.Enums.Priority.High => Color.Warning,
+        _ => Color.Default
+    };
+
+    private string GetPriorityLabel(NewsFlow.Domain.Enums.Priority p) => p switch
+    {
+        NewsFlow.Domain.Enums.Priority.Urgent => "!!",
+        NewsFlow.Domain.Enums.Priority.High => "!",
+        _ => "—"
+    };
 }

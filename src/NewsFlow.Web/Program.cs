@@ -22,6 +22,7 @@ builder.Services.AddMudServices();
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddScoped<AuthStateService>();
+builder.Services.AddScoped<NewsFlow.Application.Common.Interfaces.ICurrentUserService, BlazorCurrentUserService>();
 
 var configPath = Path.Combine(builder.Environment.ContentRootPath, "..", "..", "config", "workspaces");
 builder.Services.AddYamlConfiguration(

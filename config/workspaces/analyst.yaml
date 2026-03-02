@@ -35,6 +35,21 @@ workspace:
       label: "Вернуть в очередь"
       log_message: "Материал возвращён в очередь анализа"
 
+    return_to_translation:
+      label: "Вернуть на перевод"
+      requires_fields: ["rejection_reason"]
+      log_message: "Материал возвращён на перевод"
+
+    mark_not_of_interest:
+      label: "Не представляет интереса"
+      requires_fields: ["rejection_reason"]
+      log_message: "Материал не представляет интереса"
+
+    mark_distorted:
+      label: "Искажён"
+      requires_fields: ["rejection_reason"]
+      log_message: "Материал искажён"
+
   work_layout:
     type: "three-panel"
     left:

@@ -47,6 +47,16 @@ pipeline:
       type: "terminal"
       color: "#9E9E9E"
 
+    - code: "NotOfInterest"
+      name: "Не представляет интереса"
+      type: "terminal"
+      color: "#78909C"
+
+    - code: "Distorted"
+      name: "Искажён"
+      type: "terminal"
+      color: "#795548"
+
   transitions:
     - from: "New"
       to: "InTranslation"
@@ -116,6 +126,35 @@ pipeline:
       required_role: "Analyst"
       lock_to_user: true
       log_message: "Материал взят повторно на анализ"
+
+    - from: "InAnalysis"
+      to: "ReturnedFromTranslation"
+      action: "return_to_translation"
+      label: "Вернуть на перевод"
+      required_role: "Analyst"
+      only_assigned_user: true
+      unlock: true
+      log_message: "Материал возвращён на перевод"
+
+    - from: "InAnalysis"
+      to: "NotOfInterest"
+      action: "mark_not_of_interest"
+      label: "Не представляет интереса"
+      required_role: "Analyst"
+      only_assigned_user: true
+      unlock: true
+      requires_fields: ["rejection_reason"]
+      log_message: "Материал отмечен как не представляющий интереса"
+
+    - from: "InAnalysis"
+      to: "Distorted"
+      action: "mark_distorted"
+      label: "Искажён"
+      required_role: "Analyst"
+      only_assigned_user: true
+      unlock: true
+      requires_fields: ["rejection_reason"]
+      log_message: "Материал отмечен как искажённый"
 
     - from:
         - "New"

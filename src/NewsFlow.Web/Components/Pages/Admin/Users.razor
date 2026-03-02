@@ -58,15 +58,22 @@
     private string? _search;
     private IReadOnlyList<NewsFlow.Application.References.DTOs.RoleDto> _roles = [];
     private IReadOnlyList<NewsFlow.Application.References.DTOs.LanguageDto> _languages = [];
+    private bool _initialized;
 
     protected override async Task OnInitializedAsync()
     {
         _roles = await Sender.Send(new NewsFlow.Application.References.Queries.GetRolesQuery());
         _languages = await Sender.Send(new NewsFlow.Application.References.Queries.GetLanguagesQuery());
+        _initialized = true;
+        if (_table is not null)
+            await _table.ReloadServerData();
     }
 
     private async Task<TableData<NewsFlow.Application.Users.DTOs.UserDto>> ServerLoad(TableState state, CancellationToken ct)
     {
+        if (!_initialized)
+            return new TableData<NewsFlow.Application.Users.DTOs.UserDto> { Items = [], TotalItems = 0 };
+
         var result = await Sender.Send(new NewsFlow.Application.Users.Queries.GetUsersQuery(
             Page: state.Page + 1, PageSize: state.PageSize, Search: _search), ct);
         return new TableData<NewsFlow.Application.Users.DTOs.UserDto>

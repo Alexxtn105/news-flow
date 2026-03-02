@@ -1,0 +1,97 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_title" Label="Заголовок" Variant="Variant.Outlined" Class="mb-2" Required="true" />
+        <MudTextField @bind-Value="_originalText" Label="Текст материала" Lines="8" Variant="Variant.Outlined" Class="mb-2" />
+
+        <MudGrid>
+            <MudItem xs="6">
+                <MudSelect T="Guid" @bind-Value="_languageId" Label="Язык оригинала" Variant="Variant.Outlined" Required="true" Class="mb-2">
+                    @foreach (var l in Languages)
+                    {
+                        <MudSelectItem T="Guid" Value="@l.Id">@l.Name (@l.Code)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSelect T="Guid" @bind-Value="_sourceId" Label="Источник" Variant="Variant.Outlined" Required="true" Class="mb-2">
+                    @foreach (var s in Sources)
+                    {
+                        <MudSelectItem T="Guid" Value="@s.Id">@s.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            <MudItem xs="6">
+                <MudSelect T="Guid?" @bind-Value="_countryId" Label="Страна" Variant="Variant.Outlined" Clearable="true" Class="mb-2">
+                    @foreach (var c in Countries)
+                    {
+                        <MudSelectItem T="Guid?" Value="@c.Id">@c.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField @bind-Value="_location" Label="Место (город/регион)" Variant="Variant.Outlined" Class="mb-2" />
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            <MudItem xs="6">
+                <MudSelect T="NewsFlow.Domain.Enums.Priority" @bind-Value="_priority" Label="Приоритет" Variant="Variant.Outlined" Class="mb-2">
+                    <MudSelectItem T="NewsFlow.Domain.Enums.Priority" Value="NewsFlow.Domain.Enums.Priority.Normal">Normal</MudSelectItem>
+                    <MudSelectItem T="NewsFlow.Domain.Enums.Priority" Value="NewsFlow.Domain.Enums.Priority.High">High</MudSelectItem>
+                    <MudSelectItem T="NewsFlow.Domain.Enums.Priority" Value="NewsFlow.Domain.Enums.Priority.Urgent">Urgent</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6">
+                <MudDatePicker @bind-Date="_eventDate" Label="Дата события" Variant="Variant.Outlined" Class="mb-2" Clearable="true" />
+            </MudItem>
+        </MudGrid>
+
+        <MudSelect T="Guid" Label="Теги" MultiSelection="true" @bind-SelectedValues="_selectedTagIds"
+                   Variant="Variant.Outlined" Class="mb-2">
+            @foreach (var t in Tags)
+            {
+                <MudSelectItem T="Guid" Value="@t.Id">@t.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(_title) || _sourceId == Guid.Empty || _languageId == Guid.Empty)">
+            Загрузить
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public IReadOnlyList<NewsFlow.Application.References.DTOs.LanguageDto> Languages { get; set; } = [];
+    [Parameter] public IReadOnlyList<NewsFlow.Application.References.DTOs.SourceDto> Sources { get; set; } = [];
+    [Parameter] public IReadOnlyList<NewsFlow.Application.References.DTOs.CountryDto> Countries { get; set; } = [];
+    [Parameter] public IReadOnlyList<NewsFlow.Application.References.DTOs.TagDto> Tags { get; set; } = [];
+
+    private string _title = "";
+    private string? _originalText;
+    private Guid _languageId;
+    private Guid _sourceId;
+    private Guid? _countryId;
+    private string? _location;
+    private DateTime? _eventDate;
+    private NewsFlow.Domain.Enums.Priority _priority = NewsFlow.Domain.Enums.Priority.Normal;
+    private IEnumerable<Guid> _selectedTagIds = [];
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        var dto = new NewsFlow.Application.Materials.DTOs.CreateMaterialDto(
+            _title, _originalText, _languageId, _sourceId, _countryId,
+            _location, _eventDate.HasValue ? DateTime.SpecifyKind(_eventDate.Value, DateTimeKind.Utc) : null,
+            _priority, _selectedTagIds.Any() ? _selectedTagIds.ToList() : null);
+        MudDialog.Close(DialogResult.Ok(dto));
+    }
+}

@@ -41,6 +41,7 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddSingleton<IFileStorage>(new LocalFileStorage(
             configuration["Storage:BasePath"] ?? "storage"));
+        services.AddSingleton<IDocxExportService, DocxExportService>();
         services.AddHttpContextAccessor();
 
         return services;

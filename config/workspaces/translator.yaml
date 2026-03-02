@@ -7,8 +7,8 @@ workspace:
   input_queue:
     entity: "Material"
     filter:
-      status: "New"
-      assigned_to: null
+      status: ["New", "ReturnedFromTranslation", "InTranslation"]
+      assigned_to: [null, "self"]
     sort:
       - field: "priority"
         direction: "desc"

@@ -2,7 +2,7 @@
 @inject AuthStateService Auth
 @inject NavigationManager Nav
 
-<MudThemeProvider />
+<MudThemeProvider Theme="_theme" IsDarkMode="true" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -36,10 +36,7 @@ else
                 {
                     <MudNavLink Href="/workspace/analyst" Icon="@Icons.Material.Filled.Analytics">Аналитик</MudNavLink>
                 }
-                @if (Auth.HasRole("Operator"))
-                {
-                    <MudNavLink Href="/materials" Icon="@Icons.Material.Filled.Upload">Материалы</MudNavLink>
-                }
+                <MudNavLink Href="/materials" Icon="@Icons.Material.Filled.Upload">Материалы</MudNavLink>
                 @if (Auth.HasRole("Reviewer"))
                 {
                     <MudNavLink Href="/workspace/reviewer" Icon="@Icons.Material.Filled.RateReview">Ревьюер</MudNavLink>
@@ -81,6 +78,33 @@ else
 }
 
 @code {
+    private MudTheme _theme = new()
+    {
+        PaletteDark = new PaletteDark()
+        {
+            Black = "#0f0f1a",
+            Background = "#1a1a2e",
+            Surface = "#222238",
+            DrawerBackground = "#151528",
+            AppbarBackground = "#16213e",
+            Primary = "#00bcd4",
+            Secondary = "#e94560",
+            Tertiary = "#0f3460",
+            Info = "#29b6f6",
+            Success = "#66bb6a",
+            Warning = "#ffa726",
+            Error = "#ef5350",
+            TextPrimary = "#e0e0e0",
+            TextSecondary = "#9e9eb8",
+            ActionDefault = "#b0b0c8",
+            DrawerText = "#d0d0e0",
+            DrawerIcon = "#00bcd4",
+            LinesDefault = "#2a2a45",
+            TableLines = "#2a2a45",
+            Divider = "#2a2a45",
+        }
+    };
+
     private bool _drawerOpen = true;
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;

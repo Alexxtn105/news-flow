@@ -99,6 +99,38 @@ public class Material : AggregateRoot
         AssignedAt = null;
     }
 
+    // === Return to translation ===
+    public void ReturnToTranslation(string? reason)
+    {
+        if (Status != MaterialStatus.InAnalysis)
+            throw new InvalidOperationException($"Cannot return to translation from status {Status}");
+        RejectionReason = reason;
+        Status = MaterialStatus.ReturnedFromTranslation;
+        AssignedToId = null;
+        AssignedAt = null;
+    }
+
+    // === Terminal statuses from analysis ===
+    public void MarkAsNotOfInterest(string? reason)
+    {
+        if (Status != MaterialStatus.InAnalysis)
+            throw new InvalidOperationException($"Cannot mark as not of interest from status {Status}");
+        RejectionReason = reason;
+        Status = MaterialStatus.NotOfInterest;
+        AssignedToId = null;
+        AssignedAt = null;
+    }
+
+    public void MarkAsDistorted(string? reason)
+    {
+        if (Status != MaterialStatus.InAnalysis)
+            throw new InvalidOperationException($"Cannot mark as distorted from status {Status}");
+        RejectionReason = reason;
+        Status = MaterialStatus.Distorted;
+        AssignedToId = null;
+        AssignedAt = null;
+    }
+
     // === Rejection ===
     public void Reject(string reason)
     {

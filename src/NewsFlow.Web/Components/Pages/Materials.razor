@@ -1,0 +1,140 @@
+@page "/materials"
+@rendermode InteractiveServer
+@inject ISender Sender
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Материалы</PageTitle>
+<MudText Typo="Typo.h5" Class="mb-4">Управление материалами</MudText>
+
+<MudStack Row="true" Class="mb-3" Justify="Justify.SpaceBetween">
+    <MudStack Row="true" Spacing="2">
+        <MudTextField @bind-Value="_search" Placeholder="Поиск..." Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                      DebounceInterval="400" OnDebounceIntervalElapsed="Reload"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:250px" />
+        <MudSelect T="NewsFlow.Domain.Enums.MaterialStatus?" Value="_statusFilter" Label="Статус"
+                   Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:180px" Clearable="true"
+                   ValueChanged="OnStatusFilterChanged">
+            @foreach (var s in Enum.GetValues<NewsFlow.Domain.Enums.MaterialStatus>())
+            {
+                <MudSelectItem T="NewsFlow.Domain.Enums.MaterialStatus?" Value="@s">@s</MudSelectItem>
+            }
+        </MudSelect>
+    </MudStack>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">Загрузить материал</MudButton>
+</MudStack>
+
+<MudTable T="NewsFlow.Application.Materials.DTOs.MaterialListItemDto" ServerData="ServerLoad" @ref="_table"
+          Hover="true" Dense="true" Striped="true">
+    <HeaderContent>
+        <MudTh>Заголовок</MudTh>
+        <MudTh>Язык</MudTh>
+        <MudTh>Источник</MudTh>
+        <MudTh>Страна</MudTh>
+        <MudTh>Статус</MudTh>
+        <MudTh>Приоритет</MudTh>
+        <MudTh>Поступил</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Title</MudTd>
+        <MudTd>@context.OriginalLanguage</MudTd>
+        <MudTd>@context.Source</MudTd>
+        <MudTd>@(context.Country ?? "—")</MudTd>
+        <MudTd><MudChip T="string" Size="Size.Small" Color="GetStatusColor(context.Status)">@context.Status</MudChip></MudTd>
+        <MudTd><MudChip T="string" Size="Size.Small" Color="GetPriorityColor(context.Priority)">@context.Priority</MudChip></MudTd>
+        <MudTd>@context.ReceivedAt.ToString("dd.MM.yyyy HH:mm")</MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new[]{10, 20, 50}" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private MudTable<NewsFlow.Application.Materials.DTOs.MaterialListItemDto>? _table;
+    private string? _search;
+    private NewsFlow.Domain.Enums.MaterialStatus? _statusFilter;
+    private IReadOnlyList<NewsFlow.Application.References.DTOs.LanguageDto> _languages = [];
+    private IReadOnlyList<NewsFlow.Application.References.DTOs.SourceDto> _sources = [];
+    private IReadOnlyList<NewsFlow.Application.References.DTOs.CountryDto> _countries = [];
+    private IReadOnlyList<NewsFlow.Application.References.DTOs.TagDto> _tags = [];
+    private bool _initialized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _languages = await Sender.Send(new NewsFlow.Application.References.Queries.GetLanguagesQuery());
+        _sources = await Sender.Send(new NewsFlow.Application.References.Queries.GetSourcesQuery());
+        _countries = await Sender.Send(new NewsFlow.Application.References.Queries.GetCountriesQuery());
+        _tags = await Sender.Send(new NewsFlow.Application.References.Queries.GetTagsQuery());
+        _initialized = true;
+        if (_table is not null)
+            await _table.ReloadServerData();
+    }
+
+    private async Task<TableData<NewsFlow.Application.Materials.DTOs.MaterialListItemDto>> ServerLoad(TableState state, CancellationToken ct)
+    {
+        if (!_initialized)
+            return new TableData<NewsFlow.Application.Materials.DTOs.MaterialListItemDto> { Items = [], TotalItems = 0 };
+
+        var result = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialsQuery(
+            Page: state.Page + 1, PageSize: state.PageSize, Status: _statusFilter, Search: _search), ct);
+        return new TableData<NewsFlow.Application.Materials.DTOs.MaterialListItemDto>
+        {
+            Items = result.Items,
+            TotalItems = result.TotalCount
+        };
+    }
+
+    private async Task Reload() => _table?.ReloadServerData();
+    private async Task OnStatusFilterChanged(NewsFlow.Domain.Enums.MaterialStatus? val)
+    {
+        _statusFilter = val;
+        if (_table is not null)
+            await _table.ReloadServerData();
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<MaterialCreateDialog>
+        {
+            { x => x.Languages, _languages },
+            { x => x.Sources, _sources },
+            { x => x.Countries, _countries },
+            { x => x.Tags, _tags }
+        };
+        var dialog = await DialogService.ShowAsync<MaterialCreateDialog>("Загрузка материала", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var dto = (NewsFlow.Application.Materials.DTOs.CreateMaterialDto)result.Data!;
+            try
+            {
+                await Sender.Send(new NewsFlow.Application.Materials.Commands.CreateMaterialCommand(dto));
+                Snackbar.Add("Материал загружен", Severity.Success);
+                await _table!.ReloadServerData();
+            }
+            catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        }
+    }
+
+    private Color GetStatusColor(NewsFlow.Domain.Enums.MaterialStatus s) => s switch
+    {
+        NewsFlow.Domain.Enums.MaterialStatus.New => Color.Info,
+        NewsFlow.Domain.Enums.MaterialStatus.InTranslation or NewsFlow.Domain.Enums.MaterialStatus.InAnalysis => Color.Warning,
+        NewsFlow.Domain.Enums.MaterialStatus.Translated => Color.Primary,
+        NewsFlow.Domain.Enums.MaterialStatus.Processed => Color.Success,
+        NewsFlow.Domain.Enums.MaterialStatus.Rejected => Color.Error,
+        NewsFlow.Domain.Enums.MaterialStatus.NotOfInterest => Color.Default,
+        NewsFlow.Domain.Enums.MaterialStatus.Distorted => Color.Dark,
+        _ => Color.Default
+    };
+
+    private Color GetPriorityColor(NewsFlow.Domain.Enums.Priority p) => p switch
+    {
+        NewsFlow.Domain.Enums.Priority.Urgent => Color.Error,
+        NewsFlow.Domain.Enums.Priority.High => Color.Warning,
+        _ => Color.Default
+    };
+}

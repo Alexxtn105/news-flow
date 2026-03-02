@@ -104,9 +104,14 @@ public class GetTranslatorQueueHandler : IRequestHandler<GetTranslatorQueueQuery
         var q = _db.Materials
             .Include(m => m.OriginalLanguage).Include(m => m.Source).Include(m => m.Country).Include(m => m.AssignedTo)
             .Where(m =>
-                (m.Status == Domain.Enums.MaterialStatus.New || m.Status == Domain.Enums.MaterialStatus.ReturnedFromTranslation)
-                && m.AssignedToId == null
-                && m.OriginalLanguage.Code != "ru");
+                m.OriginalLanguage.Code != "ru"
+                && (
+                    // Свободные материалы в очереди
+                    ((m.Status == Domain.Enums.MaterialStatus.New || m.Status == Domain.Enums.MaterialStatus.ReturnedFromTranslation)
+                        && m.AssignedToId == null)
+                    // Материалы, взятые текущим пользователем в работу
+                    || (m.Status == Domain.Enums.MaterialStatus.InTranslation && m.AssignedToId == userId)
+                ));
 
         if (langIds.Count > 0)
             q = q.Where(m => langIds.Contains(m.OriginalLanguageId));
