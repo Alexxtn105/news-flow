@@ -19,15 +19,18 @@ public class ExecuteWorkspaceActionHandler : IRequestHandler<ExecuteWorkspaceAct
     private readonly IApplicationDbContext _db;
     private readonly IPipelineProvider _pipelines;
     private readonly IWorkspaceProvider _workspaces;
+    private readonly ICurrentUserService _currentUser;
 
     public ExecuteWorkspaceActionHandler(
         IApplicationDbContext db,
         IPipelineProvider pipelines,
-        IWorkspaceProvider workspaces)
+        IWorkspaceProvider workspaces,
+        ICurrentUserService currentUser)
     {
         _db = db;
         _pipelines = pipelines;
         _workspaces = workspaces;
+        _currentUser = currentUser;
     }
 
     public async Task<WorkspaceActionResult> Handle(ExecuteWorkspaceActionCommand request, CancellationToken ct)
@@ -90,6 +93,7 @@ public class ExecuteWorkspaceActionHandler : IRequestHandler<ExecuteWorkspaceAct
 
         if (transition.LockToUser)
         {
+            material.AssignedToId = _currentUser.UserId;
             material.AssignedAt = DateTime.UtcNow;
         }
         else if (transition.Unlock)
@@ -136,6 +140,7 @@ public class ExecuteWorkspaceActionHandler : IRequestHandler<ExecuteWorkspaceAct
 
         if (transition.LockToUser)
         {
+            document.AssignedToId = _currentUser.UserId;
             document.AssignedAt = DateTime.UtcNow;
         }
         else if (transition.Unlock)

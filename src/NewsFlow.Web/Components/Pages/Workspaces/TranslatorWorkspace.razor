@@ -143,11 +143,15 @@
     private async Task Release()
     {
         if (_selected == null) return;
-        await Sender.Send(new NewsFlow.Application.Materials.Commands.ReleaseMaterialFromTranslationCommand(_selected.Id, _selected.RowVersion));
-        Snackbar.Add("Материал возвращён в очередь", Severity.Info);
-        _selected = null;
-        _taken = false;
-        await LoadQueue();
+        try
+        {
+            await Sender.Send(new NewsFlow.Application.Materials.Commands.ReleaseMaterialFromTranslationCommand(_selected.Id, _selected.RowVersion));
+            Snackbar.Add("Материал возвращён в очередь", Severity.Info);
+            _selected = null;
+            _taken = false;
+            await LoadQueue();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
 
     private Color GetPriorityColor(NewsFlow.Domain.Enums.Priority p) => p switch
