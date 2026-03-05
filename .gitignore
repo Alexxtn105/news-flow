@@ -1,10 +1,10 @@
 # Environment secrets
 .env
+packages
 
 # .NET build output
 bin/
 obj/
-packages
 
 # IDE
 .vs/

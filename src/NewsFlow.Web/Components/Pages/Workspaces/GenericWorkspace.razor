@@ -20,7 +20,7 @@ else
                 <MudText Typo="Typo.h6" Class="mb-2">Очередь</MudText>
                 <MudTable T="NewsFlow.Application.Documents.DTOs.DocumentListItemDto"
                           Items="_queue" Hover="true" Dense="true" Loading="_loading"
-                          OnRowClick="@(args => SelectDocument(args.Item))">
+                          OnRowClick="@(args => args.Item is not null ? SelectDocument(args.Item) : Task.CompletedTask)">
                     <HeaderContent>
                         <MudTh>Заголовок</MudTh>
                         <MudTh>Рег. номер</MudTh>

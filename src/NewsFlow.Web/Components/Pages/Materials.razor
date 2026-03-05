@@ -32,7 +32,7 @@
             <MudTable T="NewsFlow.Application.Materials.DTOs.MaterialListItemDto" ServerData="ServerLoad" @ref="_table"
                       Hover="true" Dense="true" Striped="true"
                       RowClassFunc="@((item, _) => item.Id == _preview?.Id ? "selected-row" : "")"
-                      OnRowClick="@(args => SelectMaterial(args.Item))">
+                      OnRowClick="@(args => args.Item is not null ? SelectMaterial(args.Item) : Task.CompletedTask)">
                 <HeaderContent>
                     <MudTh>Заголовок</MudTh>
                     <MudTh>Язык</MudTh>

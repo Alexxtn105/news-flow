@@ -2,7 +2,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using NewsFlow.Application.Auth.DTOs;
 using NewsFlow.Application.Common.Interfaces;
-using NewsFlow.Application.Common.Interfaces;
 
 namespace NewsFlow.Application.Auth.Queries;
 

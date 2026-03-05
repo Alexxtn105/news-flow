@@ -13,9 +13,17 @@
 </head>
 
 <body>
+    <script>
+        // Apply saved theme immediately to prevent flash of wrong theme
+        (function() {
+            var t = localStorage.getItem('nf-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
     <Routes />
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="js/theme.js"></script>
 </body>
 
 </html>

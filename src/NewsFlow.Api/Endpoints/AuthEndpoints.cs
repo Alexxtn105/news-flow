@@ -17,7 +17,7 @@ public static class AuthEndpoints
                 var result = await sender.Send(command);
                 return Results.Ok(result);
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
                 return Results.Unauthorized();
             }

@@ -1,8 +1,10 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject AuthStateService Auth
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
-<MudThemeProvider Theme="_theme" IsDarkMode="true" />
+<MudThemeProvider @ref="_themeProvider" Theme="_theme" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -14,17 +16,22 @@
 else
 {
     <MudLayout>
-        <MudAppBar Elevation="1">
+        <MudAppBar Elevation="0">
             <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
                            OnClick="@ToggleDrawer" />
-            <MudText Typo="Typo.h6" Class="ml-3">NewsFlow</MudText>
+            <MudText Typo="Typo.h6" Class="ml-3" Style="font-weight: 700; letter-spacing: -0.02em;">NewsFlow</MudText>
             <MudSpacer />
             <NewsFlow.Web.Components.Shared.NotificationBell />
+            <MudTooltip Text="@(_isDarkMode ? "Светлая тема" : "Тёмная тема")">
+                <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                               Color="Color.Inherit"
+                               OnClick="@ToggleTheme" />
+            </MudTooltip>
             <MudText Typo="Typo.body2" Class="mr-3">@Auth.CurrentUser?.FullName</MudText>
             <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" OnClick="@Logout" />
         </MudAppBar>
 
-        <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+        <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="0">
             <MudNavMenu>
                 <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home">Главная</MudNavLink>
 
@@ -78,40 +85,84 @@ else
 }
 
 @code {
+    private MudThemeProvider _themeProvider = null!;
+    private bool _isDarkMode = true;
+    private bool _drawerOpen = true;
+
     private MudTheme _theme = new()
     {
+        // --- Monokai Dark ---
         PaletteDark = new PaletteDark()
         {
-            Black = "#000000",
-            Background = "#0a0a0a",
-            Surface = "#141414",
-            DrawerBackground = "#0f0f0f",
-            AppbarBackground = "#111111",
-            Primary = "#3b82f6",
-            Secondary = "#a855f7",
-            Tertiary = "#f59e0b",
-            Info = "#3b82f6",
-            Success = "#22c55e",
-            Warning = "#f59e0b",
-            Error = "#ef4444",
-            TextPrimary = "#e5e5e5",
-            TextSecondary = "#888888",
-            ActionDefault = "#999999",
-            DrawerText = "#e5e5e5",
-            DrawerIcon = "#3b82f6",
-            LinesDefault = "#222222",
-            TableLines = "#222222",
-            Divider = "#222222",
+            Black = "#1a1a2e",
+            Background = "#272822",
+            Surface = "#2d2e27",
+            DrawerBackground = "#23241e",
+            AppbarBackground = "#1e1f1c",
+            Primary = "#66D9EF",
+            Secondary = "#AE81FF",
+            Tertiary = "#E6DB74",
+            Info = "#66D9EF",
+            Success = "#A6E22E",
+            Warning = "#FD971F",
+            Error = "#F92672",
+            TextPrimary = "#F8F8F2",
+            TextSecondary = "#90908a",
+            ActionDefault = "#a8a8a2",
+            DrawerText = "#F8F8F2",
+            DrawerIcon = "#66D9EF",
+            LinesDefault = "#3e3d32",
+            TableLines = "#3e3d32",
+            Divider = "#3e3d32",
+            OverlayDark = "rgba(0,0,0,0.5)",
+        },
+        // --- Apple Light ---
+        PaletteLight = new PaletteLight()
+        {
+            Black = "#1D1D1F",
+            Background = "#F5F5F7",
+            Surface = "#FFFFFF",
+            DrawerBackground = "#FFFFFF",
+            AppbarBackground = "#FBFBFD",
+            AppbarText = "#1D1D1F",
+            Primary = "#007AFF",
+            Secondary = "#5856D6",
+            Tertiary = "#FF9500",
+            Info = "#007AFF",
+            Success = "#34C759",
+            Warning = "#FF9500",
+            Error = "#FF3B30",
+            TextPrimary = "#1D1D1F",
+            TextSecondary = "#86868B",
+            ActionDefault = "#8E8E93",
+            DrawerText = "#1D1D1F",
+            DrawerIcon = "#007AFF",
+            LinesDefault = "#E5E5EA",
+            TableLines = "#E5E5EA",
+            Divider = "#E5E5EA",
+            OverlayDark = "rgba(0,0,0,0.3)",
         },
         LayoutProperties = new LayoutProperties()
         {
-            DefaultBorderRadius = "8px",
+            DefaultBorderRadius = "10px",
+        },
+        Typography = new Typography()
+        {
+            Default = new Default()
+            {
+                FontFamily = new[] { "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif" },
+            }
         }
     };
 
-    private bool _drawerOpen = true;
-
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private async Task ToggleTheme()
+    {
+        _isDarkMode = !_isDarkMode;
+        var mode = _isDarkMode ? "dark" : "light";
+        await JS.InvokeVoidAsync("themeManager.set", mode);
+    }
 
     private void Logout()
     {
@@ -122,6 +173,20 @@ else
     protected override void OnInitialized()
     {
         Auth.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var saved = await JS.InvokeAsync<string>("themeManager.get");
+            var wantDark = saved != "light";
+            if (wantDark != _isDarkMode)
+            {
+                _isDarkMode = wantDark;
+                StateHasChanged();
+            }
+        }
     }
 
     public void Dispose()

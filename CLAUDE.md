@@ -83,7 +83,7 @@ Application/{Feature}/
 ├── Queries/        # record + handler в одном файле
 └── DTOs/           # record-типы для контрактов
 ```
-MediatR + FluentValidation авто-регистрируются из Assembly (`ApplicationServiceRegistration.cs`).
+Связанные команды группируются в один файл (`TranslationCommands.cs`, `AnalysisCommands.cs`, `DocumentWorkflowCommands.cs`). MediatR + FluentValidation авто-регистрируются из Assembly (`ApplicationServiceRegistration.cs`).
 
 ### Domain Method Encapsulation
 Бизнес-логика живёт в доменных сущностях, не в хендлерах. Хендлер загружает сущность, вызывает доменный метод, сохраняет.
@@ -107,7 +107,9 @@ MediatR + FluentValidation авто-регистрируются из Assembly (
 - **AuthStateService** (scoped) — хранит текущего пользователя в памяти сессии. `BlazorCurrentUserService` реализует `ICurrentUserService` через `AuthStateService` вместо `HttpContext`.
 - **Тёмная тема** (Adobe Audition style) — настроена в `MainLayout.razor` через `PaletteDark`
 - Навигация фильтруется по ролям: `Auth.HasRole("Translator")`, `Auth.HasRole("Administrator")` и т.д.
+- Blazor-компоненты в `Components/` (не `Pages/`): `Components/Pages/Workspaces/`, `Components/Pages/Admin/`, `Components/Layout/`
 - Workspace-страницы: `GenericWorkspace.razor` (динамическая из YAML), `TranslatorWorkspace.razor` и `AnalystWorkspace.razor` (кастомные)
+- Админка Pipeline/Workspace: визуальные редакторы (`PipelineEditor.razor`, `WorkspaceEditor.razor`) с диаграммой состояний (`PipelineStateDiagram.razor`)
 
 ## REST API Specifics
 

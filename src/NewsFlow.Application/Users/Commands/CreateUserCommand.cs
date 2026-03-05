@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using NewsFlow.Application.Common.Interfaces;
 using NewsFlow.Application.Users.DTOs;
 using NewsFlow.Domain.Entities;
-using NewsFlow.Application.Common.Interfaces;
 
 namespace NewsFlow.Application.Users.Commands;
 

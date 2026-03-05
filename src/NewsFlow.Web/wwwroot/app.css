@@ -1,21 +1,83 @@
+/* ============================================================
+   NewsFlow Theme System
+   Dark: Monokai-inspired  |  Light: Apple-inspired
+   ============================================================ */
+
+/* --- CSS Variables: Dark (Monokai) — default --- */
+:root, [data-theme="dark"] {
+    --nf-bg: #272822;
+    --nf-surface: #2d2e27;
+    --nf-surface-hover: #3e3d32;
+    --nf-surface-code: #3e3d32;
+    --nf-border: #3e3d32;
+    --nf-border-subtle: #33342d;
+    --nf-primary: #66D9EF;
+    --nf-secondary: #AE81FF;
+    --nf-tertiary: #E6DB74;
+    --nf-success: #A6E22E;
+    --nf-warning: #FD971F;
+    --nf-error: #F92672;
+    --nf-text: #F8F8F2;
+    --nf-text-secondary: #90908a;
+    --nf-text-code: #e6db74;
+    --nf-scrollbar-track: #272822;
+    --nf-scrollbar-thumb: #49483e;
+    --nf-scrollbar-thumb-hover: #5e5d50;
+    --nf-row-hover: rgba(102, 217, 239, 0.07);
+    --nf-row-selected: rgba(102, 217, 239, 0.14);
+    --nf-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    --nf-paper-bg: #2d2e27;
+    --nf-pipeline-bg: #23241e;
+}
+
+/* --- CSS Variables: Light (Apple) --- */
+[data-theme="light"] {
+    --nf-bg: #F5F5F7;
+    --nf-surface: #FFFFFF;
+    --nf-surface-hover: #F0F0F2;
+    --nf-surface-code: #F2F2F7;
+    --nf-border: #E5E5EA;
+    --nf-border-subtle: #EBEBF0;
+    --nf-primary: #007AFF;
+    --nf-secondary: #5856D6;
+    --nf-tertiary: #FF9500;
+    --nf-success: #34C759;
+    --nf-warning: #FF9500;
+    --nf-error: #FF3B30;
+    --nf-text: #1D1D1F;
+    --nf-text-secondary: #86868B;
+    --nf-text-code: #1D1D1F;
+    --nf-scrollbar-track: #F5F5F7;
+    --nf-scrollbar-thumb: #C7C7CC;
+    --nf-scrollbar-thumb-hover: #AEAEB2;
+    --nf-row-hover: rgba(0, 122, 255, 0.05);
+    --nf-row-selected: rgba(0, 122, 255, 0.10);
+    --nf-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    --nf-paper-bg: #FFFFFF;
+    --nf-pipeline-bg: #F2F2F7;
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
 html, body {
-    font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: #0a0a0a;
-    color: #e5e5e5;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--nf-bg);
+    color: var(--nf-text);
 }
 
 a, .btn-link {
-    color: #3b82f6;
+    color: var(--nf-primary);
 }
 
 .btn-primary {
     color: #fff;
-    background-color: #3b82f6;
-    border-color: #2563eb;
+    background-color: var(--nf-primary);
+    border-color: var(--nf-primary);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-    box-shadow: 0 0 0 0.1rem rgba(59, 130, 246, 0.3), 0 0 0 0.25rem rgba(59, 130, 246, 0.15);
+    box-shadow: 0 0 0 0.1rem rgba(102, 217, 239, 0.3), 0 0 0 0.25rem rgba(102, 217, 239, 0.15);
 }
 
 .content {
@@ -27,15 +89,15 @@ h1:focus {
 }
 
 .valid.modified:not([type=checkbox]) {
-    outline: 1px solid #22c55e;
+    outline: 1px solid var(--nf-success);
 }
 
 .invalid {
-    outline: 1px solid #ef4444;
+    outline: 1px solid var(--nf-error);
 }
 
 .validation-message {
-    color: #ef4444;
+    color: var(--nf-error);
 }
 
 .blazor-error-boundary {
@@ -52,22 +114,26 @@ h1:focus {
     border-color: #929292;
 }
 
-/* === Global card/panel style === */
+/* ============================================================
+   Custom panels & cards
+   ============================================================ */
 .nf-panel {
-    background: #141414;
-    border: 1px solid #1e1e1e;
+    background: var(--nf-surface);
+    border: 1px solid var(--nf-border);
     border-radius: 12px;
+    box-shadow: var(--nf-shadow);
     transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .nf-panel:hover {
-    background: #1a1a1a;
+    background: var(--nf-surface-hover);
 }
 
 .nf-panel-static {
-    background: #141414;
-    border: 1px solid #1e1e1e;
+    background: var(--nf-surface);
+    border: 1px solid var(--nf-border);
     border-radius: 12px;
+    box-shadow: var(--nf-shadow);
 }
 
 /* === Section headers === */
@@ -76,11 +142,13 @@ h1:focus {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #3b82f6;
+    color: var(--nf-primary);
     margin-bottom: 8px;
 }
 
-/* === Analyst workspace compact styles === */
+/* ============================================================
+   Analyst workspace compact styles
+   ============================================================ */
 .analyst-workspace .mud-table-cell {
     padding: 4px 8px !important;
     font-size: 0.8125rem;
@@ -91,15 +159,15 @@ h1:focus {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #888888;
+    color: var(--nf-text-secondary);
 }
 
 .analyst-workspace .mud-table-row:hover {
-    background-color: rgba(59, 130, 246, 0.08) !important;
+    background-color: var(--nf-row-hover) !important;
 }
 
 .analyst-workspace .mud-table-row.selected-row {
-    background-color: rgba(59, 130, 246, 0.15) !important;
+    background-color: var(--nf-row-selected) !important;
 }
 
 .panel-compact {
@@ -111,7 +179,7 @@ h1:focus {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #3b82f6;
+    color: var(--nf-primary);
     margin-bottom: 8px;
 }
 
@@ -120,7 +188,7 @@ h1:focus {
     flex-wrap: wrap;
     gap: 6px;
     padding: 8px 0;
-    border-top: 1px solid #222222;
+    border-top: 1px solid var(--nf-border);
 }
 
 .toolbar-actions .mud-button {
@@ -139,25 +207,30 @@ h1:focus {
     line-height: 1.4;
 }
 
-/* === Materials page styles === */
+/* ============================================================
+   Materials page
+   ============================================================ */
 .materials-page .mud-table-row {
     cursor: pointer;
 }
 
 .materials-page .mud-table-row:hover {
-    background-color: rgba(59, 130, 246, 0.06) !important;
+    background-color: var(--nf-row-hover) !important;
 }
 
 .materials-page .mud-table-row.selected-row {
-    background-color: rgba(59, 130, 246, 0.12) !important;
+    background-color: var(--nf-row-selected) !important;
 }
 
-/* === Material preview panel === */
+/* ============================================================
+   Material preview panel
+   ============================================================ */
 .material-preview {
-    background: #141414;
-    border: 1px solid #1e1e1e;
+    background: var(--nf-surface);
+    border: 1px solid var(--nf-border);
     border-radius: 12px;
     padding: 20px;
+    box-shadow: var(--nf-shadow);
     animation: slideIn 0.2s ease;
 }
 
@@ -171,7 +244,7 @@ h1:focus {
 .material-preview-title {
     font-size: 1rem;
     font-weight: 600;
-    color: #e5e5e5;
+    color: var(--nf-text);
     line-height: 1.4;
 }
 
@@ -183,14 +256,14 @@ h1:focus {
 }
 
 .material-preview-text {
-    background: #1c1c1c;
-    border: 1px solid #222222;
+    background: var(--nf-surface-code);
+    border: 1px solid var(--nf-border);
     border-radius: 8px;
     padding: 16px;
     font-family: 'Consolas', 'Courier New', monospace;
     font-size: 0.8125rem;
     line-height: 1.6;
-    color: #d4d4d4;
+    color: var(--nf-text);
     max-height: 400px;
     overflow-y: auto;
     white-space: pre-wrap;
@@ -202,13 +275,13 @@ h1:focus {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #888888;
+    color: var(--nf-text-secondary);
     margin-bottom: 6px;
     margin-top: 12px;
 }
 
 .material-preview-label.primary {
-    color: #3b82f6;
+    color: var(--nf-primary);
 }
 
 @keyframes slideIn {
@@ -216,60 +289,66 @@ h1:focus {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* === MudBlazor overrides for dark theme === */
+/* ============================================================
+   MudBlazor overrides
+   ============================================================ */
 .mud-table {
-    border-radius: 8px !important;
+    border-radius: 10px !important;
     overflow: hidden;
 }
 
 .mud-paper {
-    background-color: #141414 !important;
+    background-color: var(--nf-paper-bg) !important;
 }
 
 .mud-appbar {
-    border-bottom: 1px solid #1e1e1e;
+    border-bottom: 1px solid var(--nf-border) !important;
 }
 
 .mud-drawer {
-    border-right: 1px solid #1e1e1e !important;
+    border-right: 1px solid var(--nf-border) !important;
 }
 
 .mud-nav-link:hover {
-    background-color: rgba(59, 130, 246, 0.08) !important;
+    background-color: var(--nf-row-hover) !important;
 }
 
 .mud-chip {
-    border-radius: 6px !important;
+    border-radius: 8px !important;
 }
 
-/* Custom scrollbar */
+/* ============================================================
+   Scrollbar
+   ============================================================ */
 ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #0a0a0a;
+    background: var(--nf-scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #333;
-    border-radius: 3px;
+    background: var(--nf-scrollbar-thumb);
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #444;
+    background: var(--nf-scrollbar-thumb-hover);
 }
 
-/* Pipeline state diagram */
+/* ============================================================
+   Pipeline diagram
+   ============================================================ */
 .pipeline-diagram {
     overflow-x: auto;
     padding: 4px;
 }
 
 .pipeline-diagram svg {
-    background: #0f0f0f;
-    border-radius: 8px;
-    border: 1px solid #222;
+    background: var(--nf-pipeline-bg);
+    border-radius: 10px;
+    border: 1px solid var(--nf-border);
     display: block;
 }

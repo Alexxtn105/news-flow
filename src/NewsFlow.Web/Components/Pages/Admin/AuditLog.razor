@@ -17,7 +17,7 @@
         <MudDatePicker @bind-Date="_to" Label="По" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" />
     </MudItem>
     <MudItem xs="12" sm="3" Class="d-flex align-end">
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => _table?.ReloadServerData())">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => _table?.ReloadServerData() ?? Task.CompletedTask)">
             Применить
         </MudButton>
     </MudItem>
