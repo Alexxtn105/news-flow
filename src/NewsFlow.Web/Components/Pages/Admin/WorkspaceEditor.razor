@@ -1,0 +1,201 @@
+@rendermode InteractiveServer
+@using NewsFlow.Application.Common.Interfaces
+@using NewsFlow.Infrastructure.Yaml.Models
+@using NewsFlow.Infrastructure.Yaml.Parsing
+@using NewsFlow.Infrastructure.Yaml.Validation
+@inject IWorkspaceProvider WorkspaceProvider
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+    <MudText Typo="Typo.h6">Рабочие места</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="CreateWorkspace">Создать</MudButton>
+</MudStack>
+
+<MudTable T="WorkspaceInfo" Items="_workspaces" Dense="true" Hover="true" Striped="true">
+    <HeaderContent>
+        <MudTh>Код</MudTh>
+        <MudTh>Название</MudTh>
+        <MudTh>Роль</MudTh>
+        <MudTh>Сущность</MudTh>
+        <MudTh>Действия</MudTh>
+        <MudTh Style="width:140px"></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Code</MudTd>
+        <MudTd>@context.Name</MudTd>
+        <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Primary">@context.RequiredRole</MudChip></MudTd>
+        <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Info">@context.QueueEntity</MudChip></MudTd>
+        <MudTd>
+            @foreach (var a in context.Actions)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="mr-1">@a.Label</MudChip>
+            }
+        </MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                           OnClick="@(() => EditWorkspace(context))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Code" Size="Size.Small"
+                           OnClick="@(() => PreviewYaml(context))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                           OnClick="@(() => DeleteWorkspace(context))" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private IReadOnlyList<WorkspaceInfo> _workspaces = [];
+
+    protected override void OnInitialized()
+    {
+        _workspaces = WorkspaceProvider.GetAllWorkspaces();
+    }
+
+    private void RefreshList()
+    {
+        WorkspaceProvider.Reload();
+        _workspaces = WorkspaceProvider.GetAllWorkspaces();
+    }
+
+    private async Task CreateWorkspace()
+    {
+        var parameters = new DialogParameters<WorkspaceEditDialog>();
+        var dialog = await DialogService.ShowAsync<WorkspaceEditDialog>("Новое рабочее место", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var dto = (WorkspaceDefinitionDto)result.Data!;
+            SaveAndReload(dto, "Рабочее место создано");
+        }
+    }
+
+    private async Task EditWorkspace(WorkspaceInfo ws)
+    {
+        var definition = WorkspaceProvider.GetWorkspaceDefinition(ws.Code);
+        if (definition == null)
+        {
+            Snackbar.Add("Не удалось загрузить определение", Severity.Error);
+            return;
+        }
+
+        var parameters = new DialogParameters<WorkspaceEditDialog>
+        {
+            { x => x.Workspace, definition },
+            { x => x.IsEdit, true }
+        };
+        var dialog = await DialogService.ShowAsync<WorkspaceEditDialog>("Редактирование рабочего места", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var dto = (WorkspaceDefinitionDto)result.Data!;
+            SaveAndReload(dto, "Рабочее место сохранено");
+        }
+    }
+
+    private void SaveAndReload(WorkspaceDefinitionDto dto, string successMessage)
+    {
+        // Validate
+        var model = MapToModel(dto);
+        var vr = PipelineValidator.ValidateWorkspace(model);
+        if (!vr.IsValid)
+        {
+            foreach (var e in vr.Errors)
+                Snackbar.Add(e, Severity.Error);
+            return;
+        }
+        foreach (var w in vr.Warnings)
+            Snackbar.Add(w, Severity.Warning);
+
+        try
+        {
+            WorkspaceProvider.SaveWorkspace(dto);
+            RefreshList();
+            Snackbar.Add(successMessage, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Ошибка сохранения: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteWorkspace(WorkspaceInfo ws)
+    {
+        bool? confirmed = await DialogService.ShowMessageBox("Удаление",
+            $"Удалить рабочее место «{ws.Name}»? Это удалит YAML-файл.", yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed == true)
+        {
+            WorkspaceProvider.DeleteWorkspace(ws.Code);
+            RefreshList();
+            Snackbar.Add("Рабочее место удалено", Severity.Success);
+        }
+    }
+
+    private async Task PreviewYaml(WorkspaceInfo ws)
+    {
+        var definition = WorkspaceProvider.GetWorkspaceDefinition(ws.Code);
+        if (definition == null) return;
+
+        var model = MapToModel(definition);
+        var yaml = YamlParser.SerializeWorkspace(model);
+        var parameters = new DialogParameters<YamlPreviewDialog>
+        {
+            { x => x.Yaml, yaml }
+        };
+        await DialogService.ShowAsync<YamlPreviewDialog>("YAML-превью", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+    }
+
+    private static WorkspaceDefinition MapToModel(WorkspaceDefinitionDto dto) => new()
+    {
+        Code = dto.Code,
+        Name = dto.Name,
+        Description = dto.Description,
+        RequiredRole = dto.RequiredRole,
+        InputQueue = new InputQueueConfig
+        {
+            Entity = dto.InputQueue.Entity,
+            Filter = new Dictionary<string, object?>(dto.InputQueue.Filter),
+            Sort = dto.InputQueue.Sort?.Select(s => new SortConfig { Field = s.Field, Direction = s.Direction }).ToList(),
+            DisplayColumns = dto.InputQueue.DisplayColumns?.Select(c => new DisplayColumnConfig
+            {
+                Field = c.Field, Label = c.Label, Width = c.Width, Format = c.Format, Truncate = c.Truncate
+            }).ToList()
+        },
+        Actions = dto.Actions.ToDictionary(
+            a => a.Key,
+            a => new ActionDefinition
+            {
+                Label = a.Value.Label,
+                RequiresFields = a.Value.RequiresFields,
+                CreatesEntity = a.Value.CreatesEntity,
+                LogMessage = a.Value.LogMessage
+            }),
+        WorkLayout = dto.WorkLayout != null
+            ? new WorkLayoutConfig
+            {
+                Type = dto.WorkLayout.Type,
+                Left = MapPanel(dto.WorkLayout.Left),
+                Center = MapPanel(dto.WorkLayout.Center),
+                Right = MapPanel(dto.WorkLayout.Right)
+            }
+            : null
+    };
+
+    private static PanelConfig? MapPanel(PanelConfigDto? dto)
+    {
+        if (dto == null) return null;
+        return new PanelConfig
+        {
+            Title = dto.Title,
+            Fields = dto.Fields.Select(f => new FieldConfig
+            {
+                Field = f.Field, Type = f.Type, Label = f.Label,
+                ReadOnly = f.ReadOnly, Required = f.Required, Placeholder = f.Placeholder
+            }).ToList()
+        };
+    }
+}

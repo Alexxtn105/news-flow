@@ -1,0 +1,91 @@
+@using NewsFlow.Application.Common.Interfaces
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="Code" Label="Код конвейера" Required="true"
+                      ReadOnly="IsEdit" Variant="Variant.Outlined" Class="mb-3"
+                      Placeholder="material_custom" HelperText="Латиница, цифры, подчёркивания" />
+        <MudTextField @bind-Value="Name" Label="Название" Required="true"
+                      Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="Description" Label="Описание" Lines="2"
+                      Variant="Variant.Outlined" Class="mb-3" />
+        <MudSelect T="string" @bind-Value="Entity" Label="Сущность" Variant="Variant.Outlined" Class="mb-3">
+            <MudSelectItem Value="@("Material")">Material</MudSelectItem>
+            <MudSelectItem Value="@("Document")">Document</MudSelectItem>
+        </MudSelect>
+        <MudNumericField T="int" @bind-Value="Version" Label="Версия" Min="1"
+                         Variant="Variant.Outlined" Class="mb-3" />
+
+        <MudExpansionPanels Class="mt-2">
+            <MudExpansionPanel Text="Таймаут блокировки">
+                <MudSwitch T="bool" @bind-Value="_hasLockTimeout" Label="Настроить таймаут" Color="Color.Primary" Class="mb-2" />
+                @if (_hasLockTimeout)
+                {
+                    <MudNumericField T="int" @bind-Value="_lockDuration" Label="Длительность (часы)" Min="1"
+                                     Variant="Variant.Outlined" Class="mb-2" />
+                    <MudTextField @bind-Value="_lockFallback" Label="Статус возврата"
+                                  Variant="Variant.Outlined" Class="mb-2" Placeholder="$previous" />
+                    <MudSwitch T="bool" @bind-Value="_lockNotify" Label="Уведомлять" Color="Color.Primary" />
+                }
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(Code) || string.IsNullOrWhiteSpace(Name))">
+            @(IsEdit ? "Сохранить" : "Создать")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string Code { get; set; } = "";
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string Entity { get; set; } = "Material";
+    [Parameter] public int Version { get; set; } = 1;
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public LockTimeoutDto? LockTimeout { get; set; }
+
+    private bool _hasLockTimeout;
+    private int _lockDuration = 4;
+    private string? _lockFallback = "$previous";
+    private bool _lockNotify = true;
+
+    protected override void OnInitialized()
+    {
+        if (LockTimeout != null)
+        {
+            _hasLockTimeout = true;
+            _lockDuration = LockTimeout.DurationHours;
+            _lockFallback = LockTimeout.FallbackStatus;
+            _lockNotify = LockTimeout.Notify;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        var dto = new PipelineDefinitionDto
+        {
+            Code = Code.Trim(),
+            Name = Name.Trim(),
+            Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
+            Entity = Entity,
+            Version = Version,
+            LockTimeout = _hasLockTimeout
+                ? new LockTimeoutDto
+                {
+                    DurationHours = _lockDuration,
+                    FallbackStatus = _lockFallback,
+                    Notify = _lockNotify
+                }
+                : null
+        };
+        MudDialog.Close(DialogResult.Ok(dto));
+    }
+}

@@ -4,6 +4,9 @@ public interface IPipelineProvider
 {
     PipelineInfo? GetPipeline(string code);
     IReadOnlyList<PipelineInfo> GetAllPipelines();
+    PipelineDefinitionDto? GetPipelineDefinition(string code);
+    void SavePipeline(PipelineDefinitionDto definition);
+    void DeletePipeline(string code);
     void Reload();
 }
 
@@ -11,6 +14,9 @@ public interface IWorkspaceProvider
 {
     WorkspaceInfo? GetWorkspace(string code);
     IReadOnlyList<WorkspaceInfo> GetAllWorkspaces();
+    WorkspaceDefinitionDto? GetWorkspaceDefinition(string code);
+    void SaveWorkspace(WorkspaceDefinitionDto definition);
+    void DeleteWorkspace(string code);
     void Reload();
 }
 

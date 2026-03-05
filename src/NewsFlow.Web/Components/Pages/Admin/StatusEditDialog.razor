@@ -1,0 +1,58 @@
+@using NewsFlow.Application.Common.Interfaces
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="Code" Label="Код статуса" Required="true"
+                      ReadOnly="IsEdit" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="Name" Label="Название" Required="true"
+                      Variant="Variant.Outlined" Class="mb-3" />
+        <MudSelect T="string" @bind-Value="Type" Label="Тип" Variant="Variant.Outlined" Class="mb-3">
+            <MudSelectItem Value="@("initial")">Начальный (initial)</MudSelectItem>
+            <MudSelectItem Value="@("intermediate")">Промежуточный (intermediate)</MudSelectItem>
+            <MudSelectItem Value="@("returned")">Возврат (returned)</MudSelectItem>
+            <MudSelectItem Value="@("terminal")">Конечный (terminal)</MudSelectItem>
+        </MudSelect>
+        <MudSwitch T="bool" @bind-Value="IsLocked" Label="Блокирует на пользователя" Color="MudBlazor.Color.Primary" Class="mb-3" />
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudTextField @bind-Value="Color" Label="Цвет (hex)" Variant="Variant.Outlined"
+                          Placeholder="#2196F3" Style="flex:1" />
+            @if (!string.IsNullOrEmpty(Color))
+            {
+                <div style="width:40px;height:40px;border-radius:8px;background:@Color;border:1px solid #444"></div>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Color="MudBlazor.Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(Code) || string.IsNullOrWhiteSpace(Name))">
+            @(IsEdit ? "Сохранить" : "Добавить")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string Code { get; set; } = "";
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public string Type { get; set; } = "intermediate";
+    [Parameter] public bool IsLocked { get; set; }
+    [Parameter] public string? Color { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        var dto = new StatusDefinitionDto
+        {
+            Code = Code.Trim(),
+            Name = Name.Trim(),
+            Type = Type,
+            IsLocked = IsLocked,
+            Color = string.IsNullOrWhiteSpace(Color) ? null : Color.Trim()
+        };
+        MudDialog.Close(DialogResult.Ok(dto));
+    }
+}

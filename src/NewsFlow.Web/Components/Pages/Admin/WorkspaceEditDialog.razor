@@ -1,0 +1,366 @@
+@using NewsFlow.Application.Common.Interfaces
+
+<MudDialog>
+    <DialogContent>
+        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
+            @* Tab 1: General *@
+            <MudTabPanel Text="Основные" Icon="@Icons.Material.Filled.Info">
+                <MudTextField @bind-Value="_code" Label="Код" Required="true" ReadOnly="IsEdit"
+                              Variant="Variant.Outlined" Class="mb-3" Placeholder="reviewer" />
+                <MudTextField @bind-Value="_name" Label="Название" Required="true"
+                              Variant="Variant.Outlined" Class="mb-3" />
+                <MudTextField @bind-Value="_description" Label="Описание" Lines="2"
+                              Variant="Variant.Outlined" Class="mb-3" />
+                <MudSelect T="string" @bind-Value="_requiredRole" Label="Требуемая роль" Required="true"
+                           Variant="Variant.Outlined" Class="mb-3">
+                    @foreach (var r in _roles)
+                    {
+                        <MudSelectItem Value="@r">@r</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudTabPanel>
+
+            @* Tab 2: Input Queue *@
+            <MudTabPanel Text="Очередь" Icon="@Icons.Material.Filled.Queue">
+                <MudSelect T="string" @bind-Value="_queueEntity" Label="Сущность" Variant="Variant.Outlined" Class="mb-3">
+                    <MudSelectItem Value="@("Material")">Material</MudSelectItem>
+                    <MudSelectItem Value="@("Document")">Document</MudSelectItem>
+                </MudSelect>
+
+                <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">Фильтр</MudText>
+                <MudSimpleTable Dense="true" Hover="true" Class="mb-3">
+                    <thead><tr><th>Ключ</th><th>Значение</th><th Style="width:60px"></th></tr></thead>
+                    <tbody>
+                        @foreach (var kv in _filterEntries)
+                        {
+                            var entry = kv;
+                            <tr>
+                                <td><MudTextField @bind-Value="entry.Key" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                                <td><MudTextField @bind-Value="entry.Value" Variant="Variant.Text" Margin="Margin.Dense"
+                                                  Placeholder="строка или [\"a\",\"b\"]" /></td>
+                                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                   OnClick="@(() => _filterEntries.Remove(entry))" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="AddFilter">Добавить фильтр</MudButton>
+
+                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">Сортировка</MudText>
+                <MudSimpleTable Dense="true" Hover="true" Class="mb-3">
+                    <thead><tr><th>Поле</th><th>Направление</th><th Style="width:60px"></th></tr></thead>
+                    <tbody>
+                        @foreach (var s in _sortEntries)
+                        {
+                            var sort = s;
+                            <tr>
+                                <td><MudTextField @bind-Value="sort.Field" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                                <td>
+                                    <MudSelect T="string" @bind-Value="sort.Direction" Variant="Variant.Text" Margin="Margin.Dense">
+                                        <MudSelectItem Value="@("asc")">asc</MudSelectItem>
+                                        <MudSelectItem Value="@("desc")">desc</MudSelectItem>
+                                    </MudSelect>
+                                </td>
+                                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                   OnClick="@(() => _sortEntries.Remove(sort))" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="AddSort">Добавить сортировку</MudButton>
+
+                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">Колонки отображения</MudText>
+                <MudSimpleTable Dense="true" Hover="true" Class="mb-3">
+                    <thead><tr><th>Поле</th><th>Заголовок</th><th>Ширина</th><th>Формат</th><th Style="width:60px"></th></tr></thead>
+                    <tbody>
+                        @foreach (var c in _columnEntries)
+                        {
+                            var col = c;
+                            <tr>
+                                <td><MudTextField @bind-Value="col.Field" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                                <td><MudTextField @bind-Value="col.Label" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                                <td><MudTextField @bind-Value="col.Width" Variant="Variant.Text" Margin="Margin.Dense" Placeholder="30%" /></td>
+                                <td><MudTextField @bind-Value="col.Format" Variant="Variant.Text" Margin="Margin.Dense" Placeholder="datetime" /></td>
+                                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                   OnClick="@(() => _columnEntries.Remove(col))" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="AddColumn">Добавить колонку</MudButton>
+            </MudTabPanel>
+
+            @* Tab 3: Actions *@
+            <MudTabPanel Text="Действия" Icon="@Icons.Material.Filled.PlayArrow">
+                <MudSimpleTable Dense="true" Hover="true" Class="mb-3">
+                    <thead><tr><th>Код</th><th>Название</th><th>Обяз. поля</th><th>Лог</th><th Style="width:60px"></th></tr></thead>
+                    <tbody>
+                        @foreach (var a in _actionEntries)
+                        {
+                            var action = a;
+                            <tr>
+                                <td><MudTextField @bind-Value="action.Code" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                                <td><MudTextField @bind-Value="action.Label" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                                <td><MudTextField @bind-Value="action.RequiresFieldsText" Variant="Variant.Text" Margin="Margin.Dense"
+                                                  Placeholder="через запятую" /></td>
+                                <td><MudTextField @bind-Value="action.LogMessage" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                   OnClick="@(() => _actionEntries.Remove(action))" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="AddAction">Добавить действие</MudButton>
+            </MudTabPanel>
+
+            @* Tab 4: Layout *@
+            <MudTabPanel Text="Макет" Icon="@Icons.Material.Filled.ViewColumn">
+                <MudSwitch T="bool" @bind-Value="_hasLayout" Label="Настроить макет" Color="Color.Primary" Class="mb-3" />
+                @if (_hasLayout)
+                {
+                    <MudSelect T="string" @bind-Value="_layoutType" Label="Тип макета" Variant="Variant.Outlined" Class="mb-3">
+                        <MudSelectItem Value="@("split-panel")">Две панели (split-panel)</MudSelectItem>
+                        <MudSelectItem Value="@("three-panel")">Три панели (three-panel)</MudSelectItem>
+                    </MudSelect>
+
+                    <PanelEditor Title="Левая панель" Panel="_leftPanel" />
+                    @if (_layoutType == "three-panel")
+                    {
+                        <PanelEditor Title="Центральная панель" Panel="_centerPanel" />
+                    }
+                    <PanelEditor Title="Правая панель" Panel="_rightPanel" />
+                }
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(_code) || string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_requiredRole))">
+            @(IsEdit ? "Сохранить" : "Создать")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public WorkspaceDefinitionDto? Workspace { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+
+    private string _code = "";
+    private string _name = "";
+    private string? _description;
+    private string _requiredRole = "";
+    private string _queueEntity = "Material";
+
+    private List<FilterEntry> _filterEntries = [];
+    private List<SortEntry> _sortEntries = [];
+    private List<ColumnEntry> _columnEntries = [];
+    private List<ActionEntry> _actionEntries = [];
+
+    private bool _hasLayout;
+    private string _layoutType = "split-panel";
+    private PanelEditor.PanelData _leftPanel = new();
+    private PanelEditor.PanelData _centerPanel = new();
+    private PanelEditor.PanelData _rightPanel = new();
+
+    private readonly string[] _roles =
+        ["Administrator", "Operator", "Translator", "Analyst", "Reviewer", "Registrar", "Controller", "Evaluator"];
+
+    protected override void OnInitialized()
+    {
+        if (Workspace != null)
+        {
+            _code = Workspace.Code;
+            _name = Workspace.Name;
+            _description = Workspace.Description;
+            _requiredRole = Workspace.RequiredRole;
+            _queueEntity = Workspace.InputQueue.Entity;
+
+            _filterEntries = Workspace.InputQueue.Filter
+                .Select(kv => new FilterEntry { Key = kv.Key, Value = SerializeFilterValue(kv.Value) })
+                .ToList();
+
+            _sortEntries = Workspace.InputQueue.Sort?
+                .Select(s => new SortEntry { Field = s.Field, Direction = s.Direction })
+                .ToList() ?? [];
+
+            _columnEntries = Workspace.InputQueue.DisplayColumns?
+                .Select(c => new ColumnEntry { Field = c.Field, Label = c.Label, Width = c.Width, Format = c.Format })
+                .ToList() ?? [];
+
+            _actionEntries = Workspace.Actions
+                .Select(a => new ActionEntry
+                {
+                    Code = a.Key,
+                    Label = a.Value.Label,
+                    RequiresFieldsText = a.Value.RequiresFields != null ? string.Join(", ", a.Value.RequiresFields) : "",
+                    LogMessage = a.Value.LogMessage ?? ""
+                }).ToList();
+
+            if (Workspace.WorkLayout != null)
+            {
+                _hasLayout = true;
+                _layoutType = Workspace.WorkLayout.Type;
+                _leftPanel = PanelDataFrom(Workspace.WorkLayout.Left);
+                _centerPanel = PanelDataFrom(Workspace.WorkLayout.Center);
+                _rightPanel = PanelDataFrom(Workspace.WorkLayout.Right);
+            }
+        }
+    }
+
+    private void AddFilter() => _filterEntries.Add(new FilterEntry());
+    private void AddSort() => _sortEntries.Add(new SortEntry());
+    private void AddColumn() => _columnEntries.Add(new ColumnEntry());
+    private void AddAction() => _actionEntries.Add(new ActionEntry());
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        var dto = new WorkspaceDefinitionDto
+        {
+            Code = _code.Trim(),
+            Name = _name.Trim(),
+            Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
+            RequiredRole = _requiredRole,
+            InputQueue = new InputQueueDto
+            {
+                Entity = _queueEntity,
+                Filter = _filterEntries
+                    .Where(f => !string.IsNullOrWhiteSpace(f.Key))
+                    .ToDictionary(f => f.Key.Trim(), f => ParseFilterValue(f.Value)),
+                Sort = _sortEntries.Where(s => !string.IsNullOrWhiteSpace(s.Field))
+                    .Select(s => new SortConfigDto { Field = s.Field.Trim(), Direction = s.Direction })
+                    .ToList(),
+                DisplayColumns = _columnEntries.Where(c => !string.IsNullOrWhiteSpace(c.Field))
+                    .Select(c => new DisplayColumnDto
+                    {
+                        Field = c.Field.Trim(),
+                        Label = c.Label?.Trim() ?? "",
+                        Width = string.IsNullOrWhiteSpace(c.Width) ? null : c.Width.Trim(),
+                        Format = string.IsNullOrWhiteSpace(c.Format) ? null : c.Format.Trim()
+                    }).ToList()
+            },
+            Actions = _actionEntries.Where(a => !string.IsNullOrWhiteSpace(a.Code))
+                .ToDictionary(a => a.Code.Trim(), a => new ActionDefinitionDto
+                {
+                    Label = a.Label?.Trim() ?? "",
+                    RequiresFields = ParseList(a.RequiresFieldsText),
+                    LogMessage = string.IsNullOrWhiteSpace(a.LogMessage) ? null : a.LogMessage.Trim()
+                }),
+            WorkLayout = _hasLayout
+                ? new WorkLayoutDto
+                {
+                    Type = _layoutType,
+                    Left = PanelDataToDto(_leftPanel),
+                    Center = _layoutType == "three-panel" ? PanelDataToDto(_centerPanel) : null,
+                    Right = PanelDataToDto(_rightPanel)
+                }
+                : null
+        };
+
+        MudDialog.Close(DialogResult.Ok(dto));
+    }
+
+    private static string SerializeFilterValue(object? value)
+    {
+        if (value == null) return "null";
+        if (value is List<object> list)
+        {
+            var parts = list.Select(v => v == null ? "null" : QuoteValue(v.ToString()!));
+            return "[" + string.Join(", ", parts) + "]";
+        }
+        return value.ToString() ?? "";
+    }
+
+    private static string QuoteValue(string v) => "\"" + v + "\"";
+
+    private static object? ParseFilterValue(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || text.Trim() == "null") return null;
+        var trimmed = text.Trim();
+        if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
+        {
+            var inner = trimmed[1..^1];
+            var items = inner.Split(',', StringSplitOptions.TrimEntries)
+                .Select(s =>
+                {
+                    var unquoted = s.Trim('"', '\'', ' ');
+                    return unquoted == "null" ? null : (object)unquoted;
+                }).ToList();
+            return items;
+        }
+        return trimmed;
+    }
+
+    private static List<string>? ParseList(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var items = text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => !string.IsNullOrEmpty(s)).ToList();
+        return items.Count > 0 ? items : null;
+    }
+
+    // Inline entry classes
+    private class FilterEntry
+    {
+        public string Key { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+
+    private class SortEntry
+    {
+        public string Field { get; set; } = "";
+        public string Direction { get; set; } = "asc";
+    }
+
+    private class ColumnEntry
+    {
+        public string Field { get; set; } = "";
+        public string? Label { get; set; } = "";
+        public string? Width { get; set; }
+        public string? Format { get; set; }
+    }
+
+    private class ActionEntry
+    {
+        public string Code { get; set; } = "";
+        public string Label { get; set; } = "";
+        public string RequiresFieldsText { get; set; } = "";
+        public string LogMessage { get; set; } = "";
+    }
+
+    private static PanelEditor.PanelData PanelDataFrom(PanelConfigDto? dto)
+    {
+        if (dto == null) return new PanelEditor.PanelData();
+        return new PanelEditor.PanelData
+        {
+            Title = dto.Title,
+            Fields = dto.Fields.Select(f => new PanelEditor.FieldEntry
+            {
+                Field = f.Field, Type = f.Type, Label = f.Label,
+                ReadOnly = f.ReadOnly, Required = f.Required
+            }).ToList()
+        };
+    }
+
+    private static PanelConfigDto? PanelDataToDto(PanelEditor.PanelData panel)
+    {
+        if (string.IsNullOrWhiteSpace(panel.Title) && panel.Fields.Count == 0) return null;
+        return new PanelConfigDto
+        {
+            Title = panel.Title.Trim(),
+            Fields = panel.Fields.Where(f => !string.IsNullOrWhiteSpace(f.Field))
+                .Select(f => new FieldConfigDto
+                {
+                    Field = f.Field.Trim(),
+                    Type = string.IsNullOrWhiteSpace(f.Type) ? null : f.Type.Trim(),
+                    Label = string.IsNullOrWhiteSpace(f.Label) ? null : f.Label.Trim(),
+                    ReadOnly = f.ReadOnly,
+                    Required = f.Required
+                }).ToList()
+        };
+    }
+}

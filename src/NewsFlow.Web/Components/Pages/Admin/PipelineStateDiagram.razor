@@ -1,0 +1,288 @@
+@using NewsFlow.Application.Common.Interfaces
+@using System.Globalization
+
+@if (Pipeline != null && Pipeline.Statuses.Count > 0)
+{
+    <div class="pipeline-diagram" style="overflow-x:auto">
+        @((MarkupString)BuildSvg())
+    </div>
+}
+
+@code {
+    [Parameter] public PipelineDefinitionDto? Pipeline { get; set; }
+
+    private const double NodeWidth = 170;
+    private const double NodeHeight = 56;
+    private const double RankSpacingY = 110;
+    private const double NodeSpacingX = 210;
+    private const double PaddingX = 40;
+    private const double PaddingY = 30;
+
+    private List<NodePosition> _nodes = [];
+    private List<EdgePath> _edges = [];
+
+    protected override void OnParametersSet() => ComputeLayout();
+
+    private string BuildSvg()
+    {
+        if (_nodes.Count == 0) return "";
+
+        var svgWidth = ComputeSvgWidth();
+        var svgHeight = ComputeSvgHeight();
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"<svg width=\"{F(svgWidth)}\" height=\"{F(svgHeight)}\" xmlns=\"http://www.w3.org/2000/svg\">");
+
+        // Defs
+        sb.Append("<defs>");
+        sb.Append("<marker id=\"arrowhead\" markerWidth=\"10\" markerHeight=\"7\" refX=\"10\" refY=\"3.5\" orient=\"auto\">");
+        sb.Append("<polygon points=\"0 0, 10 3.5, 0 7\" fill=\"#888\" />");
+        sb.Append("</marker></defs>");
+
+        // Edges
+        foreach (var edge in _edges)
+        {
+            sb.Append($"<path d=\"{edge.Path}\" stroke=\"#555\" stroke-width=\"1.5\" fill=\"none\" marker-end=\"url(#arrowhead)\" />");
+            sb.Append($"<text x=\"{F(edge.LabelX)}\" y=\"{F(edge.LabelY)}\" fill=\"#777\" font-size=\"10\" text-anchor=\"middle\" font-family=\"sans-serif\">{Escape(edge.Label)}</text>");
+        }
+
+        // Nodes
+        foreach (var node in _nodes)
+        {
+            var rx = node.Type == "terminal" ? 20 : 12;
+            var typeLabel = node.Type switch
+            {
+                "initial" => "начальный",
+                "terminal" => "конечный",
+                "returned" => "возврат",
+                _ => ""
+            };
+            var nameY = node.Y + NodeHeight / 2 + (string.IsNullOrEmpty(typeLabel) ? 5 : 0);
+
+            sb.Append($"<g style=\"cursor:pointer\">");
+            sb.Append($"<rect x=\"{F(node.X)}\" y=\"{F(node.Y)}\" width=\"{F(NodeWidth)}\" height=\"{F(NodeHeight)}\" rx=\"{rx}\" fill=\"{node.Color}\" opacity=\"0.85\" stroke=\"#444\" stroke-width=\"1\" />");
+            sb.Append($"<text x=\"{F(node.X + NodeWidth / 2)}\" y=\"{F(nameY)}\" fill=\"white\" font-size=\"12\" text-anchor=\"middle\" font-weight=\"bold\" font-family=\"sans-serif\">{Escape(node.Name)}</text>");
+
+            if (!string.IsNullOrEmpty(typeLabel))
+            {
+                sb.Append($"<text x=\"{F(node.X + NodeWidth / 2)}\" y=\"{F(node.Y + NodeHeight / 2 + 16)}\" fill=\"rgba(255,255,255,0.6)\" font-size=\"10\" text-anchor=\"middle\" font-family=\"sans-serif\">{Escape(typeLabel)}</text>");
+            }
+
+            if (node.IsLocked)
+            {
+                sb.Append($"<text x=\"{F(node.X + NodeWidth - 14)}\" y=\"{F(node.Y + 16)}\" fill=\"rgba(255,255,255,0.8)\" font-size=\"11\" font-family=\"sans-serif\">&#128274;</text>");
+            }
+
+            sb.Append("</g>");
+        }
+
+        sb.Append("</svg>");
+        return sb.ToString();
+    }
+
+    private double ComputeSvgWidth()
+    {
+        if (_nodes.Count == 0) return 500;
+        return Math.Max(_nodes.Max(n => n.X) + NodeWidth + PaddingX, 500);
+    }
+
+    private double ComputeSvgHeight()
+    {
+        if (_nodes.Count == 0) return 200;
+        return _nodes.Max(n => n.Y) + NodeHeight + PaddingY;
+    }
+
+    private void ComputeLayout()
+    {
+        _nodes = [];
+        _edges = [];
+        if (Pipeline == null || Pipeline.Statuses.Count == 0) return;
+
+        var statusCodes = Pipeline.Statuses.Select(s => s.Code).ToHashSet();
+        var adjacency = new Dictionary<string, List<string>>();
+        foreach (var code in statusCodes) adjacency[code] = [];
+        foreach (var t in Pipeline.Transitions)
+        {
+            foreach (var from in t.From)
+            {
+                if (adjacency.ContainsKey(from) && statusCodes.Contains(t.To))
+                    adjacency[from].Add(t.To);
+            }
+        }
+
+        // BFS rank assignment
+        var initialCodes = Pipeline.Statuses.Where(s => s.Type == "initial").Select(s => s.Code).ToList();
+        var terminalCodes = Pipeline.Statuses.Where(s => s.Type == "terminal").Select(s => s.Code).ToHashSet();
+        var ranks = new Dictionary<string, int>();
+        var queue = new Queue<string>();
+
+        foreach (var code in initialCodes)
+        {
+            ranks[code] = 0;
+            queue.Enqueue(code);
+        }
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            var currentRank = ranks[current];
+            foreach (var next in adjacency[current])
+            {
+                if (!ranks.ContainsKey(next))
+                {
+                    ranks[next] = currentRank + 1;
+                    queue.Enqueue(next);
+                }
+            }
+        }
+
+        // Assign unranked statuses
+        var maxRank = ranks.Count > 0 ? ranks.Values.Max() : 0;
+        foreach (var s in Pipeline.Statuses)
+        {
+            if (!ranks.ContainsKey(s.Code))
+                ranks[s.Code] = maxRank + 1;
+        }
+
+        // Push terminal statuses to the bottom
+        var finalMaxRank = ranks.Values.Max();
+        foreach (var code in terminalCodes)
+        {
+            if (ranks.ContainsKey(code))
+                ranks[code] = finalMaxRank + 1;
+        }
+
+        // Group by rank
+        var rankGroups = Pipeline.Statuses
+            .GroupBy(s => ranks[s.Code])
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        var maxNodesInRank = rankGroups.Max(g => g.Count());
+        var svgWidth = Math.Max(maxNodesInRank * NodeSpacingX + PaddingX * 2, 500);
+
+        // Position nodes
+        var nodePositions = new Dictionary<string, NodePosition>();
+        foreach (var group in rankGroups)
+        {
+            var rank = group.Key;
+            var items = group.ToList();
+            var totalWidth = items.Count * NodeSpacingX - (NodeSpacingX - NodeWidth);
+            var startX = (svgWidth - totalWidth) / 2;
+
+            for (var i = 0; i < items.Count; i++)
+            {
+                var s = items[i];
+                var node = new NodePosition
+                {
+                    Code = s.Code,
+                    Name = s.Name,
+                    Type = s.Type,
+                    IsLocked = s.IsLocked,
+                    Color = s.Color ?? "#666",
+                    X = startX + i * NodeSpacingX,
+                    Y = PaddingY + rank * RankSpacingY
+                };
+                nodePositions[s.Code] = node;
+                _nodes.Add(node);
+            }
+        }
+
+        // Build edges
+        var edgeIndex = new Dictionary<(string, string), int>();
+        foreach (var t in Pipeline.Transitions)
+        {
+            foreach (var fromCode in t.From)
+            {
+                if (!nodePositions.ContainsKey(fromCode) || !nodePositions.ContainsKey(t.To))
+                    continue;
+
+                var from = nodePositions[fromCode];
+                var to = nodePositions[t.To];
+
+                var key = (fromCode, t.To);
+                edgeIndex.TryGetValue(key, out var idx);
+                edgeIndex[key] = idx + 1;
+
+                var fromCx = from.X + NodeWidth / 2;
+                var fromCy = from.Y + NodeHeight;
+                var toCx = to.X + NodeWidth / 2;
+                var toCy = to.Y;
+
+                bool isReturn = from.Y >= to.Y;
+                if (isReturn)
+                {
+                    fromCy = from.Y;
+                    toCy = to.Y + NodeHeight;
+                }
+
+                var offset = idx * 20;
+                string path;
+                double labelX, labelY;
+
+                if (Math.Abs(fromCx - toCx) < 1 && !isReturn)
+                {
+                    path = $"M {F(fromCx + offset)} {F(fromCy)} L {F(toCx + offset)} {F(toCy)}";
+                    labelX = fromCx + offset + 8;
+                    labelY = (fromCy + toCy) / 2;
+                }
+                else
+                {
+                    var midY = (fromCy + toCy) / 2;
+
+                    if (isReturn)
+                    {
+                        var side = fromCx > toCx
+                            ? Math.Max(from.X + NodeWidth, to.X + NodeWidth) + 30 + offset
+                            : Math.Min(from.X, to.X) - 30 - offset;
+                        path = $"M {F(fromCx)} {F(fromCy)} C {F(side)} {F(fromCy)}, {F(side)} {F(toCy)}, {F(toCx)} {F(toCy)}";
+                        labelX = side;
+                        labelY = midY;
+                    }
+                    else
+                    {
+                        var curveOffset = offset;
+                        path = $"M {F(fromCx)} {F(fromCy)} Q {F((fromCx + toCx) / 2 + curveOffset)} {F(midY)}, {F(toCx)} {F(toCy)}";
+                        labelX = (fromCx + toCx) / 2 + curveOffset;
+                        labelY = midY - 6;
+                    }
+                }
+
+                _edges.Add(new EdgePath
+                {
+                    FromCode = fromCode,
+                    ToCode = t.To,
+                    Path = path,
+                    Label = t.Label,
+                    LabelX = labelX,
+                    LabelY = labelY
+                });
+            }
+        }
+    }
+
+    private static string F(double v) => v.ToString("F1", CultureInfo.InvariantCulture);
+
+    private static string Escape(string s) => System.Net.WebUtility.HtmlEncode(s);
+
+    private class NodePosition
+    {
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Type { get; set; } = "";
+        public bool IsLocked { get; set; }
+        public string Color { get; set; } = "#666";
+        public double X { get; set; }
+        public double Y { get; set; }
+    }
+
+    private class EdgePath
+    {
+        public string FromCode { get; set; } = "";
+        public string ToCode { get; set; } = "";
+        public string Path { get; set; } = "";
+        public string Label { get; set; } = "";
+        public double LabelX { get; set; }
+        public double LabelY { get; set; }
+    }
+}

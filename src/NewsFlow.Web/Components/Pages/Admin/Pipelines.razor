@@ -1,98 +1,14 @@
 @page "/admin/pipelines"
 @rendermode InteractiveServer
-@inject NewsFlow.Application.Common.Interfaces.IPipelineProvider PipelineProvider
-@inject NewsFlow.Application.Common.Interfaces.IWorkspaceProvider WorkspaceProvider
 
-<PageTitle>Конвейеры</PageTitle>
-<MudText Typo="Typo.h5" Class="mb-4">Конвейеры обработки</MudText>
+<PageTitle>Конвейеры и рабочие места</PageTitle>
+<MudText Typo="Typo.h5" Class="mb-4">Конвейеры и рабочие места</MudText>
 
 <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
-    <MudTabPanel Text="Конвейеры">
-        @foreach (var pipeline in _pipelines)
-        {
-            <MudPaper Class="pa-4 mb-3" Elevation="1">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-                    <MudText Typo="Typo.h6">@pipeline.Name</MudText>
-                    <MudChip T="string" Size="Size.Small" Color="Color.Info">@pipeline.Entity</MudChip>
-                    <MudChip T="string" Size="Size.Small">v@pipeline.Version</MudChip>
-                </MudStack>
-                @if (!string.IsNullOrEmpty(pipeline.Description))
-                {
-                    <MudText Typo="Typo.body2" Class="mb-2">@pipeline.Description</MudText>
-                }
-
-                <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">Статусы</MudText>
-                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
-                    @foreach (var status in pipeline.Statuses)
-                    {
-                        <MudChip T="string" Size="Size.Small"
-                                 Style="@($"background-color:{status.Color ?? "#999"};color:white")">
-                            @status.Name
-                            @if (status.Type == "initial") { <MudText Typo="Typo.caption" Class="ml-1">(нач.)</MudText> }
-                            @if (status.Type == "terminal") { <MudText Typo="Typo.caption" Class="ml-1">(кон.)</MudText> }
-                        </MudChip>
-                    }
-                </MudStack>
-
-                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">Переходы (@pipeline.Transitions.Count)</MudText>
-                <MudSimpleTable Dense="true" Hover="true" Style="max-width:800px">
-                    <thead>
-                        <tr>
-                            <th>Из</th>
-                            <th>В</th>
-                            <th>Действие</th>
-                            <th>Роль</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var t in pipeline.Transitions)
-                        {
-                            <tr>
-                                <td>@string.Join(", ", t.From)</td>
-                                <td>@t.To</td>
-                                <td>@t.Label</td>
-                                <td>@(t.RequiredRole ?? "—")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
-            </MudPaper>
-        }
+    <MudTabPanel Text="Конвейеры" Icon="@Icons.Material.Filled.AccountTree">
+        <PipelineEditor />
     </MudTabPanel>
-
-    <MudTabPanel Text="Рабочие места">
-        @foreach (var ws in _workspaces)
-        {
-            <MudPaper Class="pa-4 mb-3" Elevation="1">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-                    <MudText Typo="Typo.h6">@ws.Name</MudText>
-                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">@ws.RequiredRole</MudChip>
-                    <MudChip T="string" Size="Size.Small" Color="Color.Info">@ws.QueueEntity</MudChip>
-                </MudStack>
-                @if (!string.IsNullOrEmpty(ws.Description))
-                {
-                    <MudText Typo="Typo.body2" Class="mb-2">@ws.Description</MudText>
-                }
-
-                <MudText Typo="Typo.subtitle2" Class="mt-2">Действия</MudText>
-                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
-                    @foreach (var action in ws.Actions)
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Default">@action.Label (@action.Code)</MudChip>
-                    }
-                </MudStack>
-            </MudPaper>
-        }
+    <MudTabPanel Text="Рабочие места" Icon="@Icons.Material.Filled.Dashboard">
+        <WorkspaceEditor />
     </MudTabPanel>
 </MudTabs>
-
-@code {
-    private IReadOnlyList<NewsFlow.Application.Common.Interfaces.PipelineInfo> _pipelines = [];
-    private IReadOnlyList<NewsFlow.Application.Common.Interfaces.WorkspaceInfo> _workspaces = [];
-
-    protected override void OnInitialized()
-    {
-        _pipelines = PipelineProvider.GetAllPipelines();
-        _workspaces = WorkspaceProvider.GetAllWorkspaces();
-    }
-}

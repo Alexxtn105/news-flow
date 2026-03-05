@@ -3267,45 +3267,166 @@ nssm start Traefik
 
 ---
 
-## 20. Дорожная карта (фазы)
+## 20. Дорожная карта (фазы) и статус реализации
 
-### Фаза 1 — MVP
-- Аутентификация (JWT)
-- Загрузка материалов (текст + файлы)
-- Рабочее место переводчика
-- Рабочее место аналитика
-- Базовый аудит-лог
-- Админка: пользователи, роли, справочники
+> **Актуальная дата:** 2026-03-05
+> **Общий статус:** Фазы 1 и 2 реализованы. Система компилируется, проходит 34 юнит-теста, готова к демонстрации.
 
-### Фаза 2 — Конвейер документов
-- Рабочие места: ревьюер, регистратор, контролёр, оценщик
-- Конфигурирование рабочих мест через YAML
-- Рассылка документов адресатам, сбор оценок (1-5)
-- Полноценный аудит
-- Уведомления (SignalR)
+### Фаза 1 — MVP ✅ РЕАЛИЗОВАНА
 
-### Фаза 3 — ГИС и медиа
-- Интеграция PostGIS, тайловый сервер Martin
-- Электронная карта (Leaflet): маркеры событий, слои, рисование
-- Пространственные запросы (по области, радиусу)
-- Встроенный видеоплеер (Video.js) и аудиоплеер (WaveSurfer.js)
-- Стриминг медиа (Range Requests)
-- Транскодирование (FFmpeg)
-- Импорт геоданных (GeoJSON, KML, Shapefile)
+| Требование | Статус | Детали реализации |
+|---|---|---|
+| Аутентификация (JWT) | ✅ Готово | `LoginCommand`, BCrypt, access token 30 мин, refresh 8 ч, блокировка после 5 попыток на 15 мин. HMAC-SHA256 (не RS256 — упрощение). Blazor использует `AuthStateService` вместо JWT (in-process). |
+| Загрузка материалов (текст + файлы) | ✅ Готово | `CreateMaterialCommand`, `LocalFileStorage` (диск, не MinIO). API multipart upload. UI — `MaterialCreateDialog.razor`. |
+| Рабочее место переводчика | ✅ Готово | `TranslatorWorkspace.razor` — split-panel (оригинал / перевод). Очередь фильтрует по языкам переводчика, исключает русский. Команды: take, save draft, complete, release, reject. |
+| Рабочее место аналитика | ✅ Готово | `AnalystWorkspace.razor` — three-panel (материал / документ / справка). Кастомная реализация (не GenericWorkspace). Создание документа из 1+ материалов. Дополнительные действия: return to translation, mark not of interest, mark distorted. |
+| Базовый аудит-лог | ✅ Готово | `AuditLog` entity, `GetAuditLogsQuery` с фильтрацией по entity type, user, date range. Blazor: `AuditLog.razor`. |
+| Админка: пользователи, роли, справочники | ✅ Готово | CRUD для Users, Sources, Languages, Countries, Tags. Назначение ролей и языков пользователям. Blazor-страницы: `Users.razor`, `Sources.razor`, `Languages.razor`, `Countries.razor`, `Tags.razor`. |
 
-### Фаза 4 — Отчёты и аналитика
-- Система шаблонных отчётов (Word, Excel, CSV/TXT)
-- Диаграммы и графики в отчётах (ScottPlot)
-- Конструктор отчётов (визуальный UI)
-- Планировщик автогенерации (Hangfire)
-- Полнотекстовый поиск (PostgreSQL FTS)
-- Дашборды и статистика
+### Фаза 2 — Конвейер документов ✅ РЕАЛИЗОВАНА
 
-### Фаза 5 — Расширенные возможности
-- Расширенное конфигурирование конвейера через YAML
-- Импорт/экспорт (файловый обмен со смежными системами)
-- Расширенная картография (тепловые карты, кластеры, аналитика)
-- Архивация и политика хранения данных
+| Требование | Статус | Детали реализации |
+|---|---|---|
+| Рабочие места: ревьюер, регистратор, контролёр, оценщик | ✅ Готово | `GenericWorkspace.razor` — универсальная реализация, рендерит UI из YAML-конфигурации. Поддерживает все 4 роли с динамическими полями действий (comment, registration_number, evaluation_score). |
+| Конфигурирование рабочих мест через YAML | ✅ Готово | 2 pipeline YAML (`material_default`, `document_default`) + 6 workspace YAML. `PipelineProvider` / `WorkspaceProvider` с кэшированием. `PipelineValidator` / `WorkspaceValidator` проверяют корректность. Визуальный просмотр: `Pipelines.razor`, `PipelineEditor.razor`, `PipelineStateDiagram.razor`, `WorkspaceEditor.razor`. |
+| Рассылка документов адресатам, сбор оценок | ✅ Готово | `DocumentDistribution` + `Recipient` entities. Статусы: Sent, Viewed, Evaluated. Оценка 1-5 с комментарием. API endpoints для рассылки и оценки. |
+| Полноценный аудит | ✅ Готово | `AuditLog.razor` с фильтрами. API endpoint `/api/admin/audit-logs`. |
+| Уведомления (SignalR) | ⚠️ Частично | `NotificationBell.razor` создан. SignalR hub `/hubs/notifications` сконфигурирован. Полноценная серверная рассылка событий при смене статусов — не реализована. |
+
+### Фаза 3 — ГИС и медиа ⛔ НЕ НАЧАТА
+
+| Требование | Статус | Примечание |
+|---|---|---|
+| Интеграция PostGIS, тайловый сервер Martin | ⛔ | Нет PostGIS extension, нет поля coordinates в Material |
+| Электронная карта (Leaflet) | ⛔ | Нет JS Interop, нет Leaflet |
+| Пространственные запросы | ⛔ | Нет geo API endpoints |
+| Видеоплеер (Video.js) / Аудиоплеер (WaveSurfer.js) | ⛔ | Нет JS Interop |
+| Стриминг медиа (Range Requests) | ⚠️ Частично | API endpoint `/api/materials/{id}/attachments/{aid}/stream` существует, но Range Requests не реализован |
+| Транскодирование (FFmpeg) | ⛔ | Нет `MediaTranscodingService` |
+| Импорт геоданных | ⛔ | Нет geo tables, нет import API |
+
+### Фаза 4 — Отчёты и аналитика ⛔ НЕ НАЧАТА
+
+| Требование | Статус | Примечание |
+|---|---|---|
+| Шаблонные отчёты (Word, Excel, CSV) | ⚠️ Заглушка | `DocxExportService` — placeholder (возвращает UTF-8 text). Нет Open XML SDK в packages/ |
+| Диаграммы и графики (ScottPlot) | ⛔ | Нет пакета ScottPlot |
+| Конструктор отчётов (UI) | ⛔ | |
+| Планировщик (Hangfire) | ⛔ | Нет пакета Hangfire |
+| Полнотекстовый поиск (PostgreSQL FTS) | ⛔ | |
+| Дашборды и статистика | ⛔ | Нет ApexCharts, нет dashboard API |
+
+### Фаза 5 — Расширенные возможности ⛔ НЕ НАЧАТА
+
+| Требование | Статус | Примечание |
+|---|---|---|
+| Расширенное конфигурирование конвейера | ⚠️ Частично | YAML-конвейеры работают. Нет UI-редактирования YAML (только просмотр). Нет `ExecuteWorkspaceActionCommand` для полного dynamic pipeline engine |
+| Импорт/экспорт (файловый обмен) | ⛔ | Нет `IImportService` / `IExportService` |
+| Расширенная картография | ⛔ | Зависит от Фазы 3 |
+| Архивация и политика хранения | ⛔ | Нет `StaleAssignmentCleanupService`, нет lifecycle policy |
+
+---
+
+## 21. Актуальные метрики проекта (на 2026-03-05)
+
+| Метрика | Значение |
+|---------|----------|
+| Исходные файлы (src) | ~143 (.cs + .razor) |
+| Строк кода (C#) | ~4 700 |
+| Строк кода (Razor) | ~1 700 |
+| Строк тестов | ~660 |
+| Юнит-тестов | 34 (все проходят) |
+| Проектов (src) | 6 |
+| Проектов (tests) | 4 (2 с тестами, 2 пустых) |
+| YAML-конфигураций | 8 (2 pipeline + 6 workspace) |
+| NuGet-пакетов (offline) | 172 |
+| Доменных сущностей | 15 |
+| MediatR Commands/Queries | ~50 |
+| Blazor-страниц | 18 |
+| API endpoint-групп | 8 |
+
+---
+
+## 22. Расхождения PRD и реализации
+
+В ходе реализации приняты следующие решения, отличающиеся от PRD:
+
+### Архитектурные
+
+| Аспект PRD | Фактическая реализация | Обоснование |
+|---|---|---|
+| JWT RS256 | HMAC-SHA256 | Упрощение; для изолированной среды достаточно |
+| MinIO (S3) | LocalFileStorage (диск) | Заглушка; интерфейс `IFileStorage` позволяет заменить |
+| Mapster / AutoMapper | Статические `ToDto()` методы | Меньше зависимостей, проще отладка |
+| ASP.NET Identity | Ручная реализация (BCrypt + JWT) | Легковеснее, не требует Identity tables |
+| FluentMigrator + EF Migrations | Только EF Core Migrations | Достаточно для текущего масштаба |
+| Serilog + PostgreSQL sink | Serilog + Console + File | PostgreSQL sink не добавлен |
+
+### Доменные
+
+| Аспект PRD | Фактическая реализация | Примечание |
+|---|---|---|
+| MaterialStatus: `Skipped` | Не реализован в enum | Есть в YAML pipeline, нет в C# enum |
+| Material: `coordinates`, `geo_area` | Отсутствуют | Будет в Фазе 3 (PostGIS) |
+| Material: `Tags` (M:M) | ✅ Реализован | `material_tags` join table |
+| Document: `Cancelled` status | ✅ В enum и YAML | Доменный метод Cancel не реализован |
+| Workspace entity в БД | Нет | Workspaces хранятся только в YAML (не в `workspaces` таблице) |
+| Pipeline entity в БД | Нет | Pipelines хранятся только в YAML (не в `pipelines` таблице) |
+| `document_versions` | ✅ Реализован | `DocumentVersion` entity с `CreateVersionSnapshot()` |
+| Таймаут блокировок | Не реализован | Нет `StaleAssignmentCleanupService` hosted service |
+| Optimistic concurrency (RowVersion/xmin) | Не реализован | Нет concurrency token в EF |
+| `report_definitions`, `generated_reports` | Не реализованы | Будет в Фазе 4 |
+| `dashboards`, `user_dashboard_preferences` | Не реализованы | Будет в Фазе 4 |
+| `geo_layers`, `geo_features` | Не реализованы | Будет в Фазе 3 |
+
+### User Stories
+
+| US | Статус | Примечание |
+|---|---|---|
+| US-1: Аутентификация | ✅ | Реализовано. Refresh token хранится в User entity (не в отдельной таблице). Блокировка: 5 попыток / 15 мин (PRD: N попыток / 30 мин). |
+| US-2: Загрузка материалов | ✅ | Реализовано. Форма `MaterialCreateDialog.razor`. Ограничение размера файла — не настроено (нет валидации 500 МБ). |
+| US-3: Перевод | ✅ | Реализовано. Фильтр по языкам переводчика работает. Черновик перевода поддерживается. |
+| US-4: Анализ и документы | ✅ | Реализовано. Создание документа из нескольких материалов. |
+| US-5: Ревью | ✅ | Реализовано через `GenericWorkspace`. Одобрение/возврат с комментарием. |
+| US-6: Регистрация, контроль, оценка | ✅ | Реализовано через `GenericWorkspace`. Все переходы работают. |
+| US-7: Администрирование | ✅ | CRUD пользователей, справочников. Конфигурирование workspace через YAML (UI только просмотр, не редактирование). |
+
+---
+
+## 23. Рекомендации по дальнейшей доработке
+
+### Приоритет: Высокий (стабилизация и безопасность)
+
+1. **Optimistic concurrency** — добавить `RowVersion` / `ConcurrencyToken` в Material и Document для защиты от race condition при одновременном взятии в работу.
+
+2. **Таймаут блокировок** — реализовать `StaleAssignmentCleanupService` (IHostedService), который каждые 15 мин проверяет зависшие назначения (>4 часов) и возвращает в очередь.
+
+3. **SignalR уведомления** — завершить серверную рассылку событий при смене статусов (MaterialStatusChanged, DocumentStatusChanged). Инфраструктура уже есть (`NotificationBell.razor`, hub).
+
+4. **FluentValidation** — добавить валидаторы для всех команд (сейчас валидация только в доменных методах через `InvalidOperationException`).
+
+5. **RefreshToken в БД** — вынести refresh token из User entity в отдельную таблицу с TTL и возможностью инвалидации.
+
+6. **Application и API тесты** — проекты созданы, но пусты. Добавить integration tests с in-memory SQLite.
+
+### Приоритет: Средний (функциональность Фазы 3)
+
+7. **MinIO вместо LocalFileStorage** — скачать Minio .NET SDK в packages/, реализовать `MinioFileStorage : IFileStorage`.
+
+8. **Range Requests для стриминга** — реализовать в attachment endpoint для видео/аудио перемотки.
+
+9. **RTL-поддержка** — добавить `dir="auto"` на текстовые поля для арабского/иврита/фарси.
+
+10. **Страница оператора загрузки** — сейчас загрузка только через `MaterialCreateDialog`. Нужна полноценная `/workspace/operator` с очередью загруженных материалов.
+
+11. **Фильтр очереди переводчика по языкам** — уже реализован в `GetTranslatorQueueQuery`, но нужно проверить edge cases (пользователь без языков).
+
+### Приоритет: Низкий (Фазы 4-5)
+
+12. **Система отчётов** — начать с DocxExportService (Open XML SDK), затем ClosedXML для Excel.
+13. **Дашборды** — начать с операционного дашборда (KPI-карточки статусов).
+14. **ГИС** — начать с PostGIS extension и поля coordinates в Material.
+15. **Полнотекстовый поиск** — PostgreSQL FTS с русским языком.
 
 ---
 

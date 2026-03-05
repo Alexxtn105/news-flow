@@ -1,0 +1,114 @@
+@using NewsFlow.Application.Common.Interfaces
+
+<MudDialog>
+    <DialogContent>
+        <MudSelect T="string" Label="Из статусов" MultiSelection="true" @bind-SelectedValues="_fromStatuses"
+                   Variant="Variant.Outlined" Class="mb-3" Required="true">
+            @foreach (var s in AvailableStatuses)
+            {
+                <MudSelectItem Value="@s">@s</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSelect T="string" @bind-Value="To" Label="В статус" Variant="Variant.Outlined" Class="mb-3" Required="true">
+            @foreach (var s in AvailableStatuses)
+            {
+                <MudSelectItem Value="@s">@s</MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField @bind-Value="Action" Label="Код действия" Required="true"
+                      Variant="Variant.Outlined" Class="mb-3" Placeholder="take, complete, return..." />
+        <MudTextField @bind-Value="Label" Label="Название действия" Required="true"
+                      Variant="Variant.Outlined" Class="mb-3" Placeholder="Взять в работу" />
+        <MudSelect T="string" @bind-Value="RequiredRole" Label="Требуемая роль"
+                   Variant="Variant.Outlined" Class="mb-3" Clearable="true">
+            @foreach (var r in _roles)
+            {
+                <MudSelectItem Value="@r">@r</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">Блокировка</MudText>
+        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="3" Class="mb-3">
+            <MudSwitch T="bool" @bind-Value="LockToUser" Label="Заблокировать" Color="Color.Primary" />
+            <MudSwitch T="bool" @bind-Value="OnlyAssignedUser" Label="Только назначенный" Color="Color.Primary" />
+            <MudSwitch T="bool" @bind-Value="Unlock" Label="Разблокировать" Color="Color.Primary" />
+        </MudStack>
+
+        <MudSwitch T="bool" @bind-Value="CreatesVersion" Label="Создавать версию" Color="Color.Primary" Class="mb-3" />
+
+        <MudTextField @bind-Value="RequiresFieldsText" Label="Обязательные поля (через запятую)"
+                      Variant="Variant.Outlined" Class="mb-3" Placeholder="translated_text, comment" />
+        <MudTextField @bind-Value="OptionalFieldsText" Label="Опциональные поля (через запятую)"
+                      Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="LogMessage" Label="Сообщение в лог"
+                      Variant="Variant.Outlined" Class="mb-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(!_fromStatuses.Any() || string.IsNullOrWhiteSpace(To) || string.IsNullOrWhiteSpace(Action))">
+            @(IsEdit ? "Сохранить" : "Добавить")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public List<string> AvailableStatuses { get; set; } = [];
+    [Parameter] public bool IsEdit { get; set; }
+
+    // Pre-populated values for edit
+    [Parameter] public List<string> FromValues { get; set; } = [];
+    [Parameter] public string To { get; set; } = "";
+    [Parameter] public string Action { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string? RequiredRole { get; set; }
+    [Parameter] public bool LockToUser { get; set; }
+    [Parameter] public bool OnlyAssignedUser { get; set; }
+    [Parameter] public bool Unlock { get; set; }
+    [Parameter] public bool CreatesVersion { get; set; }
+    [Parameter] public string RequiresFieldsText { get; set; } = "";
+    [Parameter] public string OptionalFieldsText { get; set; } = "";
+    [Parameter] public string? LogMessage { get; set; }
+
+    private IEnumerable<string> _fromStatuses = [];
+
+    private readonly string[] _roles =
+        ["Administrator", "Operator", "Translator", "Analyst", "Reviewer", "Registrar", "Controller", "Evaluator"];
+
+    protected override void OnInitialized()
+    {
+        _fromStatuses = new HashSet<string>(FromValues);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        var dto = new TransitionDefinitionDto
+        {
+            From = _fromStatuses.ToList(),
+            To = To,
+            Action = Action.Trim(),
+            Label = Label.Trim(),
+            RequiredRole = string.IsNullOrWhiteSpace(RequiredRole) ? null : RequiredRole,
+            LockToUser = LockToUser,
+            OnlyAssignedUser = OnlyAssignedUser,
+            Unlock = Unlock,
+            CreatesVersion = CreatesVersion,
+            RequiresFields = ParseList(RequiresFieldsText),
+            OptionalFields = ParseList(OptionalFieldsText),
+            LogMessage = string.IsNullOrWhiteSpace(LogMessage) ? null : LogMessage.Trim()
+        };
+        MudDialog.Close(DialogResult.Ok(dto));
+    }
+
+    private static List<string>? ParseList(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var items = text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => !string.IsNullOrEmpty(s)).ToList();
+        return items.Count > 0 ? items : null;
+    }
+}

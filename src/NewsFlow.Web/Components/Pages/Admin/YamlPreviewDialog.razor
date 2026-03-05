@@ -1,0 +1,17 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField Value="@Yaml" Lines="30" ReadOnly="true"
+                      Variant="Variant.Outlined"
+                      Style="font-family:'Cascadia Code','Consolas',monospace;font-size:12px" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Variant="Variant.Filled" Color="Color.Default">Закрыть</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public string Yaml { get; set; } = "";
+
+    private void Close() => MudDialog.Close();
+}

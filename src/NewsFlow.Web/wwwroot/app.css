@@ -260,3 +260,16 @@ h1:focus {
 ::-webkit-scrollbar-thumb:hover {
     background: #444;
 }
+
+/* Pipeline state diagram */
+.pipeline-diagram {
+    overflow-x: auto;
+    padding: 4px;
+}
+
+.pipeline-diagram svg {
+    background: #0f0f0f;
+    border-radius: 8px;
+    border: 1px solid #222;
+    display: block;
+}

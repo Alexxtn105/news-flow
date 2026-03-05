@@ -1,0 +1,449 @@
+@rendermode InteractiveServer
+@using NewsFlow.Application.Common.Interfaces
+@using NewsFlow.Infrastructure.Yaml.Models
+@using NewsFlow.Infrastructure.Yaml.Parsing
+@using NewsFlow.Infrastructure.Yaml.Validation
+@inject IPipelineProvider PipelineProvider
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3" Spacing="2">
+    <MudSelect T="string" Value="_selectedCode" ValueChanged="OnPipelineSelected"
+               Label="Конвейер" Variant="Variant.Outlined" Style="max-width:400px"
+               Placeholder="Выберите конвейер...">
+        @foreach (var p in _pipelines)
+        {
+            <MudSelectItem Value="@p.Code">@p.Name (@p.Entity)</MudSelectItem>
+        }
+    </MudSelect>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="CreatePipeline">Создать</MudButton>
+    @if (_current != null)
+    {
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Filled.Settings"
+                   OnClick="EditHeader">Настройки</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete"
+                   OnClick="DeletePipeline">Удалить</MudButton>
+    }
+</MudStack>
+
+@if (_current != null)
+{
+    @* Validation alerts *@
+    @if (_validationErrors.Count > 0 || _validationWarnings.Count > 0)
+    {
+        <MudPaper Class="pa-3 mb-3" Elevation="0" Style="border:1px solid #333">
+            @foreach (var e in _validationErrors)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mb-1">@e</MudAlert>
+            }
+            @foreach (var w in _validationWarnings)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-1">@w</MudAlert>
+            }
+        </MudPaper>
+    }
+
+    @* State diagram *@
+    <MudPaper Class="pa-3 mb-3" Elevation="1">
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Диаграмма состояний</MudText>
+        <PipelineStateDiagram Pipeline="_current" />
+    </MudPaper>
+
+    @* Statuses *@
+    <MudPaper Class="pa-3 mb-3" Elevation="1">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudText Typo="Typo.subtitle1">Статусы (@_current.Statuses.Count)</MudText>
+            <MudSpacer />
+            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="AddStatus">Добавить</MudButton>
+        </MudStack>
+        <MudTable T="StatusDefinitionDto" Items="_current.Statuses" Dense="true" Hover="true" Striped="true">
+            <HeaderContent>
+                <MudTh>Код</MudTh>
+                <MudTh>Название</MudTh>
+                <MudTh>Тип</MudTh>
+                <MudTh>Блокировка</MudTh>
+                <MudTh>Цвет</MudTh>
+                <MudTh Style="width:100px">Действия</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Code</MudTd>
+                <MudTd>@context.Name</MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Color="@GetTypeColor(context.Type)">@context.Type</MudChip>
+                </MudTd>
+                <MudTd>@(context.IsLocked ? "Да" : "")</MudTd>
+                <MudTd>
+                    @if (!string.IsNullOrEmpty(context.Color))
+                    {
+                        <div style="display:inline-flex;align-items:center;gap:6px">
+                            <div style="width:16px;height:16px;border-radius:4px;background:@context.Color"></div>
+                            <span style="font-size:12px;color:#888">@context.Color</span>
+                        </div>
+                    }
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                   OnClick="@(() => EditStatus(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                   OnClick="@(() => DeleteStatus(context))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+
+    @* Transitions *@
+    <MudPaper Class="pa-3 mb-3" Elevation="1">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudText Typo="Typo.subtitle1">Переходы (@_current.Transitions.Count)</MudText>
+            <MudSpacer />
+            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="AddTransition">Добавить</MudButton>
+        </MudStack>
+        <MudTable T="TransitionDefinitionDto" Items="_current.Transitions" Dense="true" Hover="true" Striped="true">
+            <HeaderContent>
+                <MudTh>Из</MudTh>
+                <MudTh>В</MudTh>
+                <MudTh>Действие</MudTh>
+                <MudTh>Название</MudTh>
+                <MudTh>Роль</MudTh>
+                <MudTh>Поля</MudTh>
+                <MudTh Style="width:100px">Действия</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@string.Join(", ", context.From)</MudTd>
+                <MudTd>@context.To</MudTd>
+                <MudTd><code>@context.Action</code></MudTd>
+                <MudTd>@context.Label</MudTd>
+                <MudTd>@(context.RequiredRole ?? "—")</MudTd>
+                <MudTd>
+                    @if (context.RequiresFields?.Count > 0)
+                    {
+                        @string.Join(", ", context.RequiresFields)
+                    }
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                   OnClick="@(() => EditTransition(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                   OnClick="@(() => DeleteTransition(context))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+
+    @* Action buttons *@
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Save"
+                   OnClick="Save" Disabled="!_isDirty">Сохранить</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Code"
+                   OnClick="PreviewYaml">YAML-превью</MudButton>
+        @if (_isDirty)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Есть несохранённые изменения</MudChip>
+        }
+    </MudStack>
+}
+
+@code {
+    private IReadOnlyList<PipelineInfo> _pipelines = [];
+    private string? _selectedCode;
+    private PipelineDefinitionDto? _current;
+    private bool _isDirty;
+    private List<string> _validationErrors = [];
+    private List<string> _validationWarnings = [];
+
+    protected override void OnInitialized()
+    {
+        _pipelines = PipelineProvider.GetAllPipelines();
+    }
+
+    private void OnPipelineSelected(string code)
+    {
+        _selectedCode = code;
+        _current = PipelineProvider.GetPipelineDefinition(code);
+        _isDirty = false;
+        Validate();
+    }
+
+    private void RefreshList()
+    {
+        PipelineProvider.Reload();
+        _pipelines = PipelineProvider.GetAllPipelines();
+    }
+
+    private async Task CreatePipeline()
+    {
+        var parameters = new DialogParameters<PipelineEditDialog>();
+        var dialog = await DialogService.ShowAsync<PipelineEditDialog>("Новый конвейер", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var header = (PipelineDefinitionDto)result.Data!;
+            _current = header;
+            _current.Statuses = [];
+            _current.Transitions = [];
+            _selectedCode = _current.Code;
+            _isDirty = true;
+            Validate();
+        }
+    }
+
+    private async Task EditHeader()
+    {
+        if (_current == null) return;
+        var parameters = new DialogParameters<PipelineEditDialog>
+        {
+            { x => x.Code, _current.Code },
+            { x => x.Name, _current.Name },
+            { x => x.Description, _current.Description },
+            { x => x.Entity, _current.Entity },
+            { x => x.Version, _current.Version },
+            { x => x.LockTimeout, _current.LockTimeout },
+            { x => x.IsEdit, true }
+        };
+        var dialog = await DialogService.ShowAsync<PipelineEditDialog>("Настройки конвейера", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var header = (PipelineDefinitionDto)result.Data!;
+            _current.Name = header.Name;
+            _current.Description = header.Description;
+            _current.Entity = header.Entity;
+            _current.Version = header.Version;
+            _current.LockTimeout = header.LockTimeout;
+            _isDirty = true;
+        }
+    }
+
+    private async Task DeletePipeline()
+    {
+        if (_current == null) return;
+        bool? confirmed = await DialogService.ShowMessageBox("Удаление",
+            $"Удалить конвейер «{_current.Name}»? Это удалит YAML-файл.", yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed == true)
+        {
+            PipelineProvider.DeletePipeline(_current.Code);
+            _current = null;
+            _selectedCode = null;
+            _isDirty = false;
+            RefreshList();
+            Snackbar.Add("Конвейер удалён", Severity.Success);
+        }
+    }
+
+    private async Task AddStatus()
+    {
+        if (_current == null) return;
+        var parameters = new DialogParameters<StatusEditDialog>();
+        var dialog = await DialogService.ShowAsync<StatusEditDialog>("Новый статус", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var dto = (StatusDefinitionDto)result.Data!;
+            if (_current.Statuses.Any(s => s.Code == dto.Code))
+            {
+                Snackbar.Add($"Статус с кодом «{dto.Code}» уже существует", Severity.Warning);
+                return;
+            }
+            _current.Statuses.Add(dto);
+            _isDirty = true;
+            Validate();
+        }
+    }
+
+    private async Task EditStatus(StatusDefinitionDto status)
+    {
+        if (_current == null) return;
+        var parameters = new DialogParameters<StatusEditDialog>
+        {
+            { x => x.Code, status.Code },
+            { x => x.Name, status.Name },
+            { x => x.Type, status.Type },
+            { x => x.IsLocked, status.IsLocked },
+            { x => x.Color, status.Color },
+            { x => x.IsEdit, true }
+        };
+        var dialog = await DialogService.ShowAsync<StatusEditDialog>("Редактирование статуса", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var dto = (StatusDefinitionDto)result.Data!;
+            var idx = _current.Statuses.IndexOf(status);
+            if (idx >= 0)
+            {
+                _current.Statuses[idx] = dto;
+                _isDirty = true;
+                Validate();
+            }
+        }
+    }
+
+    private async Task DeleteStatus(StatusDefinitionDto status)
+    {
+        bool? confirmed = await DialogService.ShowMessageBox("Удаление",
+            $"Удалить статус «{status.Name}»?", yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed == true && _current != null)
+        {
+            _current.Statuses.Remove(status);
+            _isDirty = true;
+            Validate();
+        }
+    }
+
+    private async Task AddTransition()
+    {
+        if (_current == null) return;
+        var parameters = new DialogParameters<TransitionEditDialog>
+        {
+            { x => x.AvailableStatuses, _current.Statuses.Select(s => s.Code).ToList() }
+        };
+        var dialog = await DialogService.ShowAsync<TransitionEditDialog>("Новый переход", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            _current.Transitions.Add((TransitionDefinitionDto)result.Data!);
+            _isDirty = true;
+            Validate();
+        }
+    }
+
+    private async Task EditTransition(TransitionDefinitionDto transition)
+    {
+        if (_current == null) return;
+        var parameters = new DialogParameters<TransitionEditDialog>
+        {
+            { x => x.AvailableStatuses, _current.Statuses.Select(s => s.Code).ToList() },
+            { x => x.FromValues, transition.From },
+            { x => x.To, transition.To },
+            { x => x.Action, transition.Action },
+            { x => x.Label, transition.Label },
+            { x => x.RequiredRole, transition.RequiredRole },
+            { x => x.LockToUser, transition.LockToUser },
+            { x => x.OnlyAssignedUser, transition.OnlyAssignedUser },
+            { x => x.Unlock, transition.Unlock },
+            { x => x.CreatesVersion, transition.CreatesVersion },
+            { x => x.RequiresFieldsText, transition.RequiresFields != null ? string.Join(", ", transition.RequiresFields) : "" },
+            { x => x.OptionalFieldsText, transition.OptionalFields != null ? string.Join(", ", transition.OptionalFields) : "" },
+            { x => x.LogMessage, transition.LogMessage },
+            { x => x.IsEdit, true }
+        };
+        var dialog = await DialogService.ShowAsync<TransitionEditDialog>("Редактирование перехода", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var idx = _current.Transitions.IndexOf(transition);
+            if (idx >= 0)
+            {
+                _current.Transitions[idx] = (TransitionDefinitionDto)result.Data!;
+                _isDirty = true;
+                Validate();
+            }
+        }
+    }
+
+    private async Task DeleteTransition(TransitionDefinitionDto transition)
+    {
+        bool? confirmed = await DialogService.ShowMessageBox("Удаление",
+            $"Удалить переход «{transition.Label}»?", yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed == true && _current != null)
+        {
+            _current.Transitions.Remove(transition);
+            _isDirty = true;
+            Validate();
+        }
+    }
+
+    private void Validate()
+    {
+        _validationErrors = [];
+        _validationWarnings = [];
+        if (_current == null) return;
+
+        var model = MapToModel(_current);
+        var vr = PipelineValidator.Validate(model);
+        _validationErrors = vr.Errors;
+        _validationWarnings = vr.Warnings;
+    }
+
+    private async Task Save()
+    {
+        if (_current == null) return;
+
+        Validate();
+        if (_validationErrors.Count > 0)
+        {
+            Snackbar.Add("Исправьте ошибки перед сохранением", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            PipelineProvider.SavePipeline(_current);
+            _isDirty = false;
+            RefreshList();
+            Snackbar.Add("Конвейер сохранён", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Ошибка сохранения: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task PreviewYaml()
+    {
+        if (_current == null) return;
+        var model = MapToModel(_current);
+        var yaml = YamlParser.SerializePipeline(model);
+        var parameters = new DialogParameters<YamlPreviewDialog>
+        {
+            { x => x.Yaml, yaml }
+        };
+        await DialogService.ShowAsync<YamlPreviewDialog>("YAML-превью", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+    }
+
+    private static PipelineDefinition MapToModel(PipelineDefinitionDto dto) => new()
+    {
+        Code = dto.Code,
+        Name = dto.Name,
+        Description = dto.Description,
+        Entity = dto.Entity,
+        Version = dto.Version,
+        Statuses = dto.Statuses.Select(s => new StatusDefinition
+        {
+            Code = s.Code, Name = s.Name, Type = s.Type, IsLocked = s.IsLocked, Color = s.Color
+        }).ToList(),
+        Transitions = dto.Transitions.Select(t => new TransitionDefinition
+        {
+            From = t.From.Count == 1 ? (object)t.From[0] : t.From.Cast<object>().ToList(),
+            To = t.To, Action = t.Action, Label = t.Label, RequiredRole = t.RequiredRole,
+            LockToUser = t.LockToUser, OnlyAssignedUser = t.OnlyAssignedUser, Unlock = t.Unlock,
+            RequiresFields = t.RequiresFields, OptionalFields = t.OptionalFields,
+            CreatesVersion = t.CreatesVersion, LogMessage = t.LogMessage
+        }).ToList(),
+        LockTimeout = dto.LockTimeout != null
+            ? new LockTimeoutConfig
+            {
+                DurationHours = dto.LockTimeout.DurationHours,
+                FallbackStatus = dto.LockTimeout.FallbackStatus,
+                Notify = dto.LockTimeout.Notify
+            }
+            : null
+    };
+
+    private static Color GetTypeColor(string type) => type switch
+    {
+        "initial" => Color.Info,
+        "terminal" => Color.Success,
+        "returned" => Color.Warning,
+        _ => Color.Default
+    };
+}

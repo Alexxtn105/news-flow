@@ -1,0 +1,64 @@
+<MudPaper Class="pa-3 mb-3" Elevation="0" Style="border:1px solid #333">
+    <MudText Typo="Typo.subtitle2" Class="mb-2">@Title</MudText>
+    <MudTextField @bind-Value="Panel.Title" Label="Заголовок панели" Variant="Variant.Outlined"
+                  Margin="Margin.Dense" Class="mb-2" />
+    <MudSimpleTable Dense="true" Hover="true" Class="mb-2">
+        <thead>
+            <tr>
+                <th>Поле</th>
+                <th>Тип</th>
+                <th>Заголовок</th>
+                <th>RO</th>
+                <th>Req</th>
+                <th Style="width:40px"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var f in Panel.Fields)
+            {
+                var field = f;
+                <tr>
+                    <td><MudTextField @bind-Value="field.Field" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                    <td>
+                        <MudSelect T="string" @bind-Value="field.Type" Variant="Variant.Text" Margin="Margin.Dense" Clearable="true">
+                            <MudSelectItem Value="@("text")">text</MudSelectItem>
+                            <MudSelectItem Value="@("textarea")">textarea</MudSelectItem>
+                            <MudSelectItem Value="@("rich-textarea")">rich-textarea</MudSelectItem>
+                            <MudSelectItem Value="@("list")">list</MudSelectItem>
+                            <MudSelectItem Value="@("number")">number</MudSelectItem>
+                        </MudSelect>
+                    </td>
+                    <td><MudTextField @bind-Value="field.Label" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                    <td><MudCheckBox T="bool" @bind-Value="field.ReadOnly" Dense="true" /></td>
+                    <td><MudCheckBox T="bool" @bind-Value="field.Required" Dense="true" /></td>
+                    <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => Panel.Fields.Remove(field))" /></td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+    <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="AddField">Добавить поле</MudButton>
+</MudPaper>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public PanelData Panel { get; set; } = new();
+
+    private void AddField() => Panel.Fields.Add(new FieldEntry());
+
+    // These classes must match WorkspaceEditDialog's inner classes
+    public class PanelData
+    {
+        public string Title { get; set; } = "";
+        public List<FieldEntry> Fields { get; set; } = [];
+    }
+
+    public class FieldEntry
+    {
+        public string Field { get; set; } = "";
+        public string? Type { get; set; }
+        public string? Label { get; set; }
+        public bool ReadOnly { get; set; }
+        public bool Required { get; set; }
+    }
+}
