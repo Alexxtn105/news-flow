@@ -21,6 +21,7 @@ public class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.HasMany(d => d.SourceMaterials).WithOne(dm => dm.Document).HasForeignKey(dm => dm.DocumentId);
         builder.HasMany(d => d.Comments).WithOne(c => c.Document).HasForeignKey(c => c.DocumentId);
         builder.HasMany(d => d.Versions).WithOne(v => v.Document).HasForeignKey(v => v.DocumentId);
+        builder.Property(d => d.RowVersion).IsConcurrencyToken();
         builder.Ignore(d => d.DomainEvents);
     }
 }

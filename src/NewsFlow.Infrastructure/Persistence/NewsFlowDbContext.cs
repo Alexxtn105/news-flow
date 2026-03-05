@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NewsFlow.Application.Common.Interfaces;
 using NewsFlow.Domain.Common;
 using NewsFlow.Domain.Entities;
+using NewsFlow.Domain.Exceptions;
 using NewsFlow.Domain.Interfaces;
 
 namespace NewsFlow.Infrastructure.Persistence;
@@ -39,9 +40,20 @@ public class NewsFlowDbContext : DbContext, IUnitOfWork, IApplicationDbContext
             if (entry.State == EntityState.Modified)
             {
                 entry.Entity.UpdatedAt = DateTime.UtcNow;
+                entry.Entity.RowVersion++;
             }
         }
 
-        return await base.SaveChangesAsync(ct);
+        try
+        {
+            return await base.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            var entry = ex.Entries.FirstOrDefault();
+            var entityName = entry?.Entity.GetType().Name ?? "Unknown";
+            var entityId = (entry?.Entity as BaseEntity)?.Id ?? Guid.Empty;
+            throw new ConcurrencyConflictException(entityName, entityId);
+        }
     }
 }

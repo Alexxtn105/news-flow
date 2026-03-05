@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using NewsFlow.Domain.Exceptions;
 
 namespace NewsFlow.Api.Middleware;
 
@@ -31,6 +32,7 @@ public class ExceptionHandlingMiddleware
     {
         var (statusCode, message) = exception switch
         {
+            ConcurrencyConflictException e => (HttpStatusCode.Conflict, e.Message),
             InvalidOperationException e => (HttpStatusCode.BadRequest, e.Message),
             KeyNotFoundException e => (HttpStatusCode.NotFound, e.Message),
             UnauthorizedAccessException e => (HttpStatusCode.Unauthorized, e.Message),

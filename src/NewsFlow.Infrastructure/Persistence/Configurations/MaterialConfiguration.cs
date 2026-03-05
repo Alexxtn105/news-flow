@@ -29,6 +29,7 @@ public class MaterialConfiguration : IEntityTypeConfiguration<Material>
 
         builder.HasMany(m => m.Attachments).WithOne(a => a.Material).HasForeignKey(a => a.MaterialId);
 
+        builder.Property(m => m.RowVersion).IsConcurrencyToken();
         builder.Ignore(m => m.DomainEvents);
     }
 }
