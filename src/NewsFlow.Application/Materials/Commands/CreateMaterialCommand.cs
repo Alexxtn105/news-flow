@@ -66,5 +66,6 @@ public class CreateMaterialHandler : IRequestHandler<CreateMaterialCommand, Mate
         m.Status, m.Priority, m.AssignedTo?.FullName, m.CreatedAt,
         m.CreatedBy?.FullName ?? "",
         m.Attachments.Select(a => new AttachmentDto(a.Id, a.FileName, a.ContentType, a.Size)).ToList(),
-        m.Tags.Select(t => t.Name).ToList());
+        m.Tags.Select(t => t.Name).ToList(),
+        m.RowVersion);
 }

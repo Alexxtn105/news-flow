@@ -21,4 +21,5 @@ public interface IApplicationDbContext
     DbSet<Recipient> Recipients { get; }
     DbSet<DocumentDistribution> DocumentDistributions { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
+    void SetOriginalRowVersion(Domain.Common.BaseEntity entity, int rowVersion);
 }

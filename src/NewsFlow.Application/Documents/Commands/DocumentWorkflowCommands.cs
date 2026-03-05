@@ -33,7 +33,7 @@ public class GetMyDocumentsHandler : IRequestHandler<GetMyDocumentsQuery, IReadO
 }
 
 // === Analyst: update document content ===
-public record UpdateDocumentContentCommand(Guid DocumentId, string Title, string Content) : IRequest<DocumentDto>;
+public record UpdateDocumentContentCommand(Guid DocumentId, string Title, string Content, int? RowVersion = null) : IRequest<DocumentDto>;
 
 public class UpdateDocumentContentHandler : IRequestHandler<UpdateDocumentContentCommand, DocumentDto>
 {
@@ -56,6 +56,7 @@ public class UpdateDocumentContentHandler : IRequestHandler<UpdateDocumentConten
         if (d.Status != DocumentStatus.Draft && d.Status != DocumentStatus.ReturnedForRevision)
             throw new InvalidOperationException($"Cannot edit document in status {d.Status}");
 
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(d, r.RowVersion.Value);
         d.Title = r.Title;
         d.Content = r.Content;
         await _db.SaveChangesAsync(ct);
@@ -64,7 +65,7 @@ public class UpdateDocumentContentHandler : IRequestHandler<UpdateDocumentConten
 }
 
 // === Analyst: submit for review ===
-public record SubmitDocumentForReviewCommand(Guid DocumentId) : IRequest<DocumentDto>;
+public record SubmitDocumentForReviewCommand(Guid DocumentId, int? RowVersion = null) : IRequest<DocumentDto>;
 
 public class SubmitForReviewHandler : IRequestHandler<SubmitDocumentForReviewCommand, DocumentDto>
 {
@@ -87,6 +88,7 @@ public class SubmitForReviewHandler : IRequestHandler<SubmitDocumentForReviewCom
         if (d.Status != DocumentStatus.Draft && d.Status != DocumentStatus.ReturnedForRevision)
             throw new InvalidOperationException($"Cannot submit document in status {d.Status}");
 
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(d, r.RowVersion.Value);
         d.Status = DocumentStatus.Draft; // ensure Draft for Reviewer queue
         d.AssignedToId = null;
         d.AssignedAt = null;
@@ -97,7 +99,7 @@ public class SubmitForReviewHandler : IRequestHandler<SubmitDocumentForReviewCom
 }
 
 // === Review ===
-public record TakeDocumentForReviewCommand(Guid DocumentId) : IRequest<DocumentDto>;
+public record TakeDocumentForReviewCommand(Guid DocumentId, int? RowVersion = null) : IRequest<DocumentDto>;
 public class TakeForReviewHandler : IRequestHandler<TakeDocumentForReviewCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
@@ -107,6 +109,7 @@ public class TakeForReviewHandler : IRequestHandler<TakeDocumentForReviewCommand
     {
         var userId = _cu.UserId ?? throw new UnauthorizedAccessException();
         var d = await LoadDoc(r.DocumentId, ct);
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(d, r.RowVersion.Value);
         d.TakeForReview(userId);
         await _db.SaveChangesAsync(ct);
         return CreateDocumentHandler.ToDto(d);
@@ -118,7 +121,7 @@ public class TakeForReviewHandler : IRequestHandler<TakeDocumentForReviewCommand
             .FirstOrDefaultAsync(d => d.Id == id, ct) ?? throw new KeyNotFoundException();
 }
 
-public record ApproveReviewCommand(Guid DocumentId) : IRequest<DocumentDto>;
+public record ApproveReviewCommand(Guid DocumentId, int? RowVersion = null) : IRequest<DocumentDto>;
 public class ApproveReviewHandler : IRequestHandler<ApproveReviewCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
@@ -129,6 +132,7 @@ public class ApproveReviewHandler : IRequestHandler<ApproveReviewCommand, Docume
             .Include(d => d.SourceMaterials).ThenInclude(sm => sm.Material)
             .Include(d => d.Comments).ThenInclude(c => c.Author)
             .FirstOrDefaultAsync(d => d.Id == r.DocumentId, ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(d, r.RowVersion.Value);
         d.ApproveReview();
         d.CreateVersionSnapshot();
         await _db.SaveChangesAsync(ct);
@@ -136,7 +140,7 @@ public class ApproveReviewHandler : IRequestHandler<ApproveReviewCommand, Docume
     }
 }
 
-public record ReturnForRevisionCommand(Guid DocumentId, string Comment) : IRequest<DocumentDto>;
+public record ReturnForRevisionCommand(Guid DocumentId, string Comment, int? RowVersion = null) : IRequest<DocumentDto>;
 public class ReturnForRevisionHandler : IRequestHandler<ReturnForRevisionCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
@@ -149,6 +153,7 @@ public class ReturnForRevisionHandler : IRequestHandler<ReturnForRevisionCommand
             .Include(d => d.SourceMaterials).ThenInclude(sm => sm.Material)
             .Include(d => d.Comments).ThenInclude(c => c.Author)
             .FirstOrDefaultAsync(d => d.Id == r.DocumentId, ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(d, r.RowVersion.Value);
         d.ReturnForRevision();
         d.Comments.Add(new DocumentComment { AuthorId = userId, Text = r.Comment });
         await _db.SaveChangesAsync(ct);
@@ -157,7 +162,7 @@ public class ReturnForRevisionHandler : IRequestHandler<ReturnForRevisionCommand
 }
 
 // === Registration ===
-public record TakeForRegistrationCommand(Guid DocumentId) : IRequest<DocumentDto>;
+public record TakeForRegistrationCommand(Guid DocumentId, int? RowVersion = null) : IRequest<DocumentDto>;
 public class TakeForRegistrationHandler : IRequestHandler<TakeForRegistrationCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
@@ -170,13 +175,14 @@ public class TakeForRegistrationHandler : IRequestHandler<TakeForRegistrationCom
             .Include(d => d.SourceMaterials).ThenInclude(sm => sm.Material)
             .Include(d => d.Comments).ThenInclude(c => c.Author)
             .FirstOrDefaultAsync(d => d.Id == r.DocumentId, ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(d, r.RowVersion.Value);
         d.TakeForRegistration(userId);
         await _db.SaveChangesAsync(ct);
         return CreateDocumentHandler.ToDto(d);
     }
 }
 
-public record CompleteRegistrationCommand(Guid DocumentId, string RegistrationNumber) : IRequest<DocumentDto>;
+public record CompleteRegistrationCommand(Guid DocumentId, string RegistrationNumber, int? RowVersion = null) : IRequest<DocumentDto>;
 public class CompleteRegistrationHandler : IRequestHandler<CompleteRegistrationCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
@@ -187,6 +193,7 @@ public class CompleteRegistrationHandler : IRequestHandler<CompleteRegistrationC
             .Include(d => d.SourceMaterials).ThenInclude(sm => sm.Material)
             .Include(d => d.Comments).ThenInclude(c => c.Author)
             .FirstOrDefaultAsync(d => d.Id == r.DocumentId, ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(d, r.RowVersion.Value);
         d.CompleteRegistration(r.RegistrationNumber);
         d.CreateVersionSnapshot();
         await _db.SaveChangesAsync(ct);
@@ -195,7 +202,7 @@ public class CompleteRegistrationHandler : IRequestHandler<CompleteRegistrationC
 }
 
 // === Control ===
-public record TakeForControlCommand(Guid DocumentId) : IRequest<DocumentDto>;
+public record TakeForControlCommand(Guid DocumentId, int? RowVersion = null) : IRequest<DocumentDto>;
 public class TakeForControlHandler : IRequestHandler<TakeForControlCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
@@ -208,13 +215,14 @@ public class TakeForControlHandler : IRequestHandler<TakeForControlCommand, Docu
             .Include(d => d.SourceMaterials).ThenInclude(sm => sm.Material)
             .Include(d => d.Comments).ThenInclude(c => c.Author)
             .FirstOrDefaultAsync(d => d.Id == r.DocumentId, ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(d, r.RowVersion.Value);
         d.TakeForControl(userId);
         await _db.SaveChangesAsync(ct);
         return CreateDocumentHandler.ToDto(d);
     }
 }
 
-public record ApproveControlCommand(Guid DocumentId) : IRequest<DocumentDto>;
+public record ApproveControlCommand(Guid DocumentId, int? RowVersion = null) : IRequest<DocumentDto>;
 public class ApproveControlHandler : IRequestHandler<ApproveControlCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
@@ -225,6 +233,7 @@ public class ApproveControlHandler : IRequestHandler<ApproveControlCommand, Docu
             .Include(d => d.SourceMaterials).ThenInclude(sm => sm.Material)
             .Include(d => d.Comments).ThenInclude(c => c.Author)
             .FirstOrDefaultAsync(d => d.Id == r.DocumentId, ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(d, r.RowVersion.Value);
         d.ApproveControl();
         d.CreateVersionSnapshot();
         await _db.SaveChangesAsync(ct);
@@ -233,7 +242,7 @@ public class ApproveControlHandler : IRequestHandler<ApproveControlCommand, Docu
 }
 
 // === Evaluation ===
-public record TakeForEvaluationCommand(Guid DocumentId) : IRequest<DocumentDto>;
+public record TakeForEvaluationCommand(Guid DocumentId, int? RowVersion = null) : IRequest<DocumentDto>;
 public class TakeForEvaluationHandler : IRequestHandler<TakeForEvaluationCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
@@ -246,13 +255,14 @@ public class TakeForEvaluationHandler : IRequestHandler<TakeForEvaluationCommand
             .Include(d => d.SourceMaterials).ThenInclude(sm => sm.Material)
             .Include(d => d.Comments).ThenInclude(c => c.Author)
             .FirstOrDefaultAsync(d => d.Id == r.DocumentId, ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(d, r.RowVersion.Value);
         d.TakeForEvaluation(userId);
         await _db.SaveChangesAsync(ct);
         return CreateDocumentHandler.ToDto(d);
     }
 }
 
-public record CompleteEvaluationCommand(Guid DocumentId, int Score, string? Commentary) : IRequest<DocumentDto>;
+public record CompleteEvaluationCommand(Guid DocumentId, int Score, string? Commentary, int? RowVersion = null) : IRequest<DocumentDto>;
 public class CompleteEvaluationHandler : IRequestHandler<CompleteEvaluationCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
@@ -263,6 +273,7 @@ public class CompleteEvaluationHandler : IRequestHandler<CompleteEvaluationComma
             .Include(d => d.SourceMaterials).ThenInclude(sm => sm.Material)
             .Include(d => d.Comments).ThenInclude(c => c.Author)
             .FirstOrDefaultAsync(d => d.Id == r.DocumentId, ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(d, r.RowVersion.Value);
         d.CompleteEvaluation(r.Score, r.Commentary);
         d.CreateVersionSnapshot();
         await _db.SaveChangesAsync(ct);

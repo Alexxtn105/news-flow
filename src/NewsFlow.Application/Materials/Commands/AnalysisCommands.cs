@@ -8,7 +8,7 @@ using NewsFlow.Domain.Enums;
 namespace NewsFlow.Application.Materials.Commands;
 
 // === Take for analysis ===
-public record TakeMaterialForAnalysisCommand(Guid MaterialId) : IRequest<MaterialDto>;
+public record TakeMaterialForAnalysisCommand(Guid MaterialId, int? RowVersion = null) : IRequest<MaterialDto>;
 
 public class TakeForAnalysisHandler : IRequestHandler<TakeMaterialForAnalysisCommand, MaterialDto>
 {
@@ -29,6 +29,7 @@ public class TakeForAnalysisHandler : IRequestHandler<TakeMaterialForAnalysisCom
             .Include(m => m.CreatedBy).Include(m => m.AssignedTo).Include(m => m.Attachments).Include(m => m.Tags)
             .FirstOrDefaultAsync(m => m.Id == r.MaterialId, ct)
             ?? throw new KeyNotFoundException("Material not found");
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(m, r.RowVersion.Value);
         m.TakeForAnalysis(userId);
         await _db.SaveChangesAsync(ct);
         return CreateMaterialHandler.ToDto(m);
@@ -36,7 +37,7 @@ public class TakeForAnalysisHandler : IRequestHandler<TakeMaterialForAnalysisCom
 }
 
 // === Complete analysis ===
-public record CompleteMaterialAnalysisCommand(Guid MaterialId) : IRequest;
+public record CompleteMaterialAnalysisCommand(Guid MaterialId, int? RowVersion = null) : IRequest;
 
 public class CompleteAnalysisHandler : IRequestHandler<CompleteMaterialAnalysisCommand>
 {
@@ -47,13 +48,14 @@ public class CompleteAnalysisHandler : IRequestHandler<CompleteMaterialAnalysisC
     public async Task Handle(CompleteMaterialAnalysisCommand r, CancellationToken ct)
     {
         var m = await _db.Materials.FindAsync([r.MaterialId], ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(m, r.RowVersion.Value);
         m.CompleteAnalysis();
         await _db.SaveChangesAsync(ct);
     }
 }
 
 // === Release from analysis ===
-public record ReleaseMaterialFromAnalysisCommand(Guid MaterialId) : IRequest;
+public record ReleaseMaterialFromAnalysisCommand(Guid MaterialId, int? RowVersion = null) : IRequest;
 
 public class ReleaseFromAnalysisHandler : IRequestHandler<ReleaseMaterialFromAnalysisCommand>
 {
@@ -64,13 +66,14 @@ public class ReleaseFromAnalysisHandler : IRequestHandler<ReleaseMaterialFromAna
     public async Task Handle(ReleaseMaterialFromAnalysisCommand r, CancellationToken ct)
     {
         var m = await _db.Materials.FindAsync([r.MaterialId], ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(m, r.RowVersion.Value);
         m.ReleaseFromAnalysis();
         await _db.SaveChangesAsync(ct);
     }
 }
 
 // === Return to translation ===
-public record ReturnMaterialToTranslationCommand(Guid MaterialId, string? Reason) : IRequest;
+public record ReturnMaterialToTranslationCommand(Guid MaterialId, string? Reason, int? RowVersion = null) : IRequest;
 
 public class ReturnToTranslationHandler : IRequestHandler<ReturnMaterialToTranslationCommand>
 {
@@ -81,13 +84,14 @@ public class ReturnToTranslationHandler : IRequestHandler<ReturnMaterialToTransl
     public async Task Handle(ReturnMaterialToTranslationCommand r, CancellationToken ct)
     {
         var m = await _db.Materials.FindAsync([r.MaterialId], ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(m, r.RowVersion.Value);
         m.ReturnToTranslation(r.Reason);
         await _db.SaveChangesAsync(ct);
     }
 }
 
 // === Mark as not of interest ===
-public record MarkMaterialNotOfInterestCommand(Guid MaterialId, string? Reason) : IRequest;
+public record MarkMaterialNotOfInterestCommand(Guid MaterialId, string? Reason, int? RowVersion = null) : IRequest;
 
 public class MarkNotOfInterestHandler : IRequestHandler<MarkMaterialNotOfInterestCommand>
 {
@@ -98,13 +102,14 @@ public class MarkNotOfInterestHandler : IRequestHandler<MarkMaterialNotOfInteres
     public async Task Handle(MarkMaterialNotOfInterestCommand r, CancellationToken ct)
     {
         var m = await _db.Materials.FindAsync([r.MaterialId], ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(m, r.RowVersion.Value);
         m.MarkAsNotOfInterest(r.Reason);
         await _db.SaveChangesAsync(ct);
     }
 }
 
 // === Mark as distorted ===
-public record MarkMaterialDistortedCommand(Guid MaterialId, string? Reason) : IRequest;
+public record MarkMaterialDistortedCommand(Guid MaterialId, string? Reason, int? RowVersion = null) : IRequest;
 
 public class MarkDistortedHandler : IRequestHandler<MarkMaterialDistortedCommand>
 {
@@ -115,6 +120,7 @@ public class MarkDistortedHandler : IRequestHandler<MarkMaterialDistortedCommand
     public async Task Handle(MarkMaterialDistortedCommand r, CancellationToken ct)
     {
         var m = await _db.Materials.FindAsync([r.MaterialId], ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(m, r.RowVersion.Value);
         m.MarkAsDistorted(r.Reason);
         await _db.SaveChangesAsync(ct);
     }

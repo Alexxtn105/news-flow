@@ -33,11 +33,16 @@ public class NewsFlowDbContext : DbContext, IUnitOfWork, IApplicationDbContext
         base.OnModelCreating(modelBuilder);
     }
 
+    public void SetOriginalRowVersion(BaseEntity entity, int rowVersion)
+    {
+        Entry(entity).Property(e => e.RowVersion).OriginalValue = rowVersion;
+    }
+
     public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
-            if (entry.State == EntityState.Modified)
+            if (entry.State == EntityState.Modified && entry.Entity is Material or Document)
             {
                 entry.Entity.UpdatedAt = DateTime.UtcNow;
                 entry.Entity.RowVersion++;
@@ -53,7 +58,7 @@ public class NewsFlowDbContext : DbContext, IUnitOfWork, IApplicationDbContext
             var entry = ex.Entries.FirstOrDefault();
             var entityName = entry?.Entity.GetType().Name ?? "Unknown";
             var entityId = (entry?.Entity as BaseEntity)?.Id ?? Guid.Empty;
-            throw new ConcurrencyConflictException(entityName, entityId);
+            throw new ConcurrencyConflictException(entityName, entityId, ex);
         }
     }
 }

@@ -341,7 +341,7 @@
         try
         {
             _selected = await Sender.Send(
-                new NewsFlow.Application.Materials.Commands.TakeMaterialForAnalysisCommand(_selected.Id));
+                new NewsFlow.Application.Materials.Commands.TakeMaterialForAnalysisCommand(_selected.Id, _selected.RowVersion));
             _taken = true;
             Snackbar.Add("Материал взят в анализ", Severity.Success);
         }
@@ -371,7 +371,7 @@
         {
             _editingDoc = await Sender.Send(
                 new NewsFlow.Application.Documents.Commands.UpdateDocumentContentCommand(
-                    _editingDoc.Id, _docTitle, _docContent));
+                    _editingDoc.Id, _docTitle, _docContent, _editingDoc.RowVersion));
             Snackbar.Add("Документ сохранён", Severity.Success);
             await LoadMyDocs();
         }
@@ -386,11 +386,11 @@
             // Save first if content changed
             if (_docTitle != _editingDoc.Title || _docContent != _editingDoc.Content)
             {
-                await Sender.Send(new NewsFlow.Application.Documents.Commands.UpdateDocumentContentCommand(
-                    _editingDoc.Id, _docTitle, _docContent));
+                _editingDoc = await Sender.Send(new NewsFlow.Application.Documents.Commands.UpdateDocumentContentCommand(
+                    _editingDoc.Id, _docTitle, _docContent, _editingDoc.RowVersion));
             }
 
-            await Sender.Send(new NewsFlow.Application.Documents.Commands.SubmitDocumentForReviewCommand(_editingDoc.Id));
+            await Sender.Send(new NewsFlow.Application.Documents.Commands.SubmitDocumentForReviewCommand(_editingDoc.Id, _editingDoc.RowVersion));
             Snackbar.Add("Документ отправлен на ревью", Severity.Success);
             _editingDoc = null;
             _docTitle = "";
@@ -406,7 +406,7 @@
         try
         {
             await Sender.Send(new NewsFlow.Application.Materials.Commands.ReturnMaterialToTranslationCommand(
-                _selected.Id, reason));
+                _selected.Id, reason, _selected.RowVersion));
             Snackbar.Add("Материал возвращён на перевод", Severity.Info);
             ResetSelection();
             await LoadQueue();
@@ -420,7 +420,7 @@
         try
         {
             await Sender.Send(new NewsFlow.Application.Materials.Commands.MarkMaterialNotOfInterestCommand(
-                _selected.Id, reason));
+                _selected.Id, reason, _selected.RowVersion));
             Snackbar.Add("Материал отмечен: не представляет интереса", Severity.Info);
             ResetSelection();
             await LoadQueue();
@@ -434,7 +434,7 @@
         try
         {
             await Sender.Send(new NewsFlow.Application.Materials.Commands.MarkMaterialDistortedCommand(
-                _selected.Id, reason));
+                _selected.Id, reason, _selected.RowVersion));
             Snackbar.Add("Материал отмечен: искажён", Severity.Info);
             ResetSelection();
             await LoadQueue();
@@ -447,7 +447,7 @@
         if (_selected == null) return;
         try
         {
-            await Sender.Send(new NewsFlow.Application.Materials.Commands.ReleaseMaterialFromAnalysisCommand(_selected.Id));
+            await Sender.Send(new NewsFlow.Application.Materials.Commands.ReleaseMaterialFromAnalysisCommand(_selected.Id, _selected.RowVersion));
             Snackbar.Add("Материал возвращён в очередь", Severity.Info);
             ResetSelection();
             await LoadQueue();

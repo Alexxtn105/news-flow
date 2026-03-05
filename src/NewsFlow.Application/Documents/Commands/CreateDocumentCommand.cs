@@ -62,5 +62,6 @@ public class CreateDocumentHandler : IRequestHandler<CreateDocumentCommand, Docu
         d.CreatedBy?.FullName ?? "", d.CreatedAt,
         d.EvaluationScore, d.EvaluationCommentary,
         d.SourceMaterials.Select(sm => new DocumentMaterialRefDto(sm.MaterialId, sm.Material?.Title ?? "")).ToList(),
-        d.Comments.Select(c => new DocumentCommentDto(c.Id, c.Author?.FullName ?? "", c.Text, c.CreatedAt)).ToList());
+        d.Comments.Select(c => new DocumentCommentDto(c.Id, c.Author?.FullName ?? "", c.Text, c.CreatedAt)).ToList(),
+        d.RowVersion);
 }

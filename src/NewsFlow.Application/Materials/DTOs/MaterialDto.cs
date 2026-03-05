@@ -7,7 +7,8 @@ public record MaterialDto(
     string OriginalLanguage, string Source, string? Country, string? Location,
     DateTime ReceivedAt, DateTime? EventDate, MaterialStatus Status,
     Priority Priority, string? AssignedTo, DateTime CreatedAt, string CreatedBy,
-    IReadOnlyList<AttachmentDto> Attachments, IReadOnlyList<string> Tags);
+    IReadOnlyList<AttachmentDto> Attachments, IReadOnlyList<string> Tags,
+    int RowVersion);
 
 public record AttachmentDto(Guid Id, string FileName, string ContentType, long Size);
 

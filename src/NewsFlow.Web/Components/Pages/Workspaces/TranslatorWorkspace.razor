@@ -107,7 +107,7 @@
         if (_selected == null) return;
         try
         {
-            _selected = await Sender.Send(new NewsFlow.Application.Materials.Commands.TakeMaterialForTranslationCommand(_selected.Id));
+            _selected = await Sender.Send(new NewsFlow.Application.Materials.Commands.TakeMaterialForTranslationCommand(_selected.Id, _selected.RowVersion));
             _taken = true;
             Snackbar.Add("Материал взят в работу", Severity.Success);
         }
@@ -117,7 +117,7 @@
     private async Task SaveDraft()
     {
         if (_selected == null) return;
-        await Sender.Send(new NewsFlow.Application.Materials.Commands.SaveTranslationDraftCommand(_selected.Id, _translatedText));
+        await Sender.Send(new NewsFlow.Application.Materials.Commands.SaveTranslationDraftCommand(_selected.Id, _translatedText, _selected.RowVersion));
         Snackbar.Add("Черновик сохранён", Severity.Info);
     }
 
@@ -126,7 +126,7 @@
         if (_selected == null) return;
         try
         {
-            await Sender.Send(new NewsFlow.Application.Materials.Commands.CompleteTranslationCommand(_selected.Id, _translatedText));
+            await Sender.Send(new NewsFlow.Application.Materials.Commands.CompleteTranslationCommand(_selected.Id, _translatedText, _selected.RowVersion));
             Snackbar.Add("Перевод завершён", Severity.Success);
             _selected = null;
             _taken = false;
@@ -138,7 +138,7 @@
     private async Task Release()
     {
         if (_selected == null) return;
-        await Sender.Send(new NewsFlow.Application.Materials.Commands.ReleaseMaterialFromTranslationCommand(_selected.Id));
+        await Sender.Send(new NewsFlow.Application.Materials.Commands.ReleaseMaterialFromTranslationCommand(_selected.Id, _selected.RowVersion));
         Snackbar.Add("Материал возвращён в очередь", Severity.Info);
         _selected = null;
         _taken = false;

@@ -8,7 +8,8 @@ public record DocumentDto(
     string CreatedBy, DateTime CreatedAt,
     int? EvaluationScore, string? EvaluationCommentary,
     IReadOnlyList<DocumentMaterialRefDto> SourceMaterials,
-    IReadOnlyList<DocumentCommentDto> Comments);
+    IReadOnlyList<DocumentCommentDto> Comments,
+    int RowVersion);
 
 public record DocumentMaterialRefDto(Guid MaterialId, string Title);
 public record DocumentCommentDto(Guid Id, string Author, string Text, DateTime CreatedAt);

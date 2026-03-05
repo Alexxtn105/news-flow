@@ -5,7 +5,7 @@ using NewsFlow.Application.Materials.DTOs;
 
 namespace NewsFlow.Application.Materials.Commands;
 
-public record TakeMaterialForTranslationCommand(Guid MaterialId) : IRequest<MaterialDto>;
+public record TakeMaterialForTranslationCommand(Guid MaterialId, int? RowVersion = null) : IRequest<MaterialDto>;
 public class TakeForTranslationHandler : IRequestHandler<TakeMaterialForTranslationCommand, MaterialDto>
 {
     private readonly IApplicationDbContext _db;
@@ -20,13 +20,14 @@ public class TakeForTranslationHandler : IRequestHandler<TakeMaterialForTranslat
             .Include(m => m.CreatedBy).Include(m => m.AssignedTo).Include(m => m.Attachments).Include(m => m.Tags)
             .FirstOrDefaultAsync(m => m.Id == r.MaterialId, ct)
             ?? throw new KeyNotFoundException("Material not found");
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(m, r.RowVersion.Value);
         m.TakeForTranslation(userId);
         await _db.SaveChangesAsync(ct);
         return CreateMaterialHandler.ToDto(m);
     }
 }
 
-public record SaveTranslationDraftCommand(Guid MaterialId, string TranslatedText) : IRequest;
+public record SaveTranslationDraftCommand(Guid MaterialId, string TranslatedText, int? RowVersion = null) : IRequest;
 public class SaveDraftHandler : IRequestHandler<SaveTranslationDraftCommand>
 {
     private readonly IApplicationDbContext _db;
@@ -34,12 +35,13 @@ public class SaveDraftHandler : IRequestHandler<SaveTranslationDraftCommand>
     public async Task Handle(SaveTranslationDraftCommand r, CancellationToken ct)
     {
         var m = await _db.Materials.FindAsync([r.MaterialId], ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(m, r.RowVersion.Value);
         m.SaveTranslationDraft(r.TranslatedText);
         await _db.SaveChangesAsync(ct);
     }
 }
 
-public record CompleteTranslationCommand(Guid MaterialId, string TranslatedText) : IRequest<MaterialDto>;
+public record CompleteTranslationCommand(Guid MaterialId, string TranslatedText, int? RowVersion = null) : IRequest<MaterialDto>;
 public class CompleteTranslationHandler : IRequestHandler<CompleteTranslationCommand, MaterialDto>
 {
     private readonly IApplicationDbContext _db;
@@ -51,13 +53,14 @@ public class CompleteTranslationHandler : IRequestHandler<CompleteTranslationCom
             .Include(m => m.CreatedBy).Include(m => m.AssignedTo).Include(m => m.Attachments).Include(m => m.Tags)
             .FirstOrDefaultAsync(m => m.Id == r.MaterialId, ct)
             ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(m, r.RowVersion.Value);
         m.CompleteTranslation(r.TranslatedText);
         await _db.SaveChangesAsync(ct);
         return CreateMaterialHandler.ToDto(m);
     }
 }
 
-public record ReleaseMaterialFromTranslationCommand(Guid MaterialId) : IRequest;
+public record ReleaseMaterialFromTranslationCommand(Guid MaterialId, int? RowVersion = null) : IRequest;
 public class ReleaseFromTranslationHandler : IRequestHandler<ReleaseMaterialFromTranslationCommand>
 {
     private readonly IApplicationDbContext _db;
@@ -65,12 +68,13 @@ public class ReleaseFromTranslationHandler : IRequestHandler<ReleaseMaterialFrom
     public async Task Handle(ReleaseMaterialFromTranslationCommand r, CancellationToken ct)
     {
         var m = await _db.Materials.FindAsync([r.MaterialId], ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(m, r.RowVersion.Value);
         m.ReleaseFromTranslation();
         await _db.SaveChangesAsync(ct);
     }
 }
 
-public record RejectMaterialCommand(Guid MaterialId, string Reason) : IRequest;
+public record RejectMaterialCommand(Guid MaterialId, string Reason, int? RowVersion = null) : IRequest;
 public class RejectMaterialHandler : IRequestHandler<RejectMaterialCommand>
 {
     private readonly IApplicationDbContext _db;
@@ -78,6 +82,7 @@ public class RejectMaterialHandler : IRequestHandler<RejectMaterialCommand>
     public async Task Handle(RejectMaterialCommand r, CancellationToken ct)
     {
         var m = await _db.Materials.FindAsync([r.MaterialId], ct) ?? throw new KeyNotFoundException();
+        if (r.RowVersion.HasValue) _db.SetOriginalRowVersion(m, r.RowVersion.Value);
         m.Reject(r.Reason);
         await _db.SaveChangesAsync(ct);
     }
