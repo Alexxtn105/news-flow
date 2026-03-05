@@ -230,7 +230,7 @@ else
             }
 
             var result = await Sender.Send(new NewsFlow.Application.Workspaces.Commands.ExecuteWorkspaceActionCommand(
-                Code, actionCode, _selectedDoc.Id, fields));
+                Code, actionCode, _selectedDoc.Id, fields, _selectedDoc.RowVersion));
 
             if (result.Success)
             {

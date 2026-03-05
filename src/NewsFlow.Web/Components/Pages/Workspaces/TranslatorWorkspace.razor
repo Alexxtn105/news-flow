@@ -117,8 +117,13 @@
     private async Task SaveDraft()
     {
         if (_selected == null) return;
-        await Sender.Send(new NewsFlow.Application.Materials.Commands.SaveTranslationDraftCommand(_selected.Id, _translatedText, _selected.RowVersion));
-        Snackbar.Add("Черновик сохранён", Severity.Info);
+        try
+        {
+            await Sender.Send(new NewsFlow.Application.Materials.Commands.SaveTranslationDraftCommand(_selected.Id, _translatedText, _selected.RowVersion));
+            _selected = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialByIdQuery(_selected.Id));
+            Snackbar.Add("Черновик сохранён", Severity.Info);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
 
     private async Task Complete()

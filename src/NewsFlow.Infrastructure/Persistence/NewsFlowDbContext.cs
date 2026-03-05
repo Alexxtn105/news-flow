@@ -42,10 +42,11 @@ public class NewsFlowDbContext : DbContext, IUnitOfWork, IApplicationDbContext
     {
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
-            if (entry.State == EntityState.Modified && entry.Entity is Material or Document)
+            if (entry.State == EntityState.Modified)
             {
                 entry.Entity.UpdatedAt = DateTime.UtcNow;
-                entry.Entity.RowVersion++;
+                if (entry.Entity is Material or Document)
+                    entry.Entity.RowVersion++;
             }
         }
 

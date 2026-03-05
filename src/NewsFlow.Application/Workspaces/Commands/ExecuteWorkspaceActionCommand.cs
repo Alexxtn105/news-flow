@@ -9,7 +9,8 @@ public record ExecuteWorkspaceActionCommand(
     string WorkspaceCode,
     string ActionCode,
     Guid EntityId,
-    Dictionary<string, string>? InputFields = null) : IRequest<WorkspaceActionResult>;
+    Dictionary<string, string>? InputFields = null,
+    int? RowVersion = null) : IRequest<WorkspaceActionResult>;
 
 public record WorkspaceActionResult(bool Success, string Message, Guid? EntityId = null);
 
@@ -70,6 +71,7 @@ public class ExecuteWorkspaceActionHandler : IRequestHandler<ExecuteWorkspaceAct
             .FirstOrDefaultAsync(m => m.Id == request.EntityId, ct)
             ?? throw new KeyNotFoundException("Material not found");
 
+        if (request.RowVersion.HasValue) _db.SetOriginalRowVersion(material, request.RowVersion.Value);
         var currentStatus = material.Status.ToString();
 
         // Find transition
@@ -118,6 +120,7 @@ public class ExecuteWorkspaceActionHandler : IRequestHandler<ExecuteWorkspaceAct
             .FirstOrDefaultAsync(d => d.Id == request.EntityId, ct)
             ?? throw new KeyNotFoundException("Document not found");
 
+        if (request.RowVersion.HasValue) _db.SetOriginalRowVersion(document, request.RowVersion.Value);
         var currentStatus = document.Status.ToString();
 
         var transition = pipeline.Transitions
