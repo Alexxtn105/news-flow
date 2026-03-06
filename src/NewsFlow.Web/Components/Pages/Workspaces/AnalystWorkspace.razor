@@ -12,6 +12,13 @@
             Рабочее место аналитика
         </MudText>
         <MudSpacer />
+        @if (_basket.Count > 0 && _mode == WorkMode.Material)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Primary"
+                     Style="font-size:0.7rem; height:20px;">
+                В документ: @_basket.Count мат.
+            </MudChip>
+        }
         <MudTooltip Text="Обновить">
             <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" OnClick="RefreshAll"
                            Color="Color.Primary" />
@@ -29,7 +36,7 @@
                         <MudTable T="NewsFlow.Application.Materials.DTOs.MaterialListItemDto"
                                   Items="_queue" Hover="true" Dense="true" Striped="true" FixedHeader="true"
                                   Loading="_loading" Breakpoint="Breakpoint.None"
-                                  RowClassFunc="@((item, _) => item.Id == _selected?.Id ? "selected-row" : "")"
+                                  RowClassFunc="@((item, _) => GetMaterialRowClass(item))"
                                   OnRowClick="@(args => args.Item is not null ? SelectMaterial(args.Item) : Task.CompletedTask)"
                                   Style="background:transparent;">
                             <HeaderContent>
@@ -45,6 +52,13 @@
                                             <MudChip T="string" Size="Size.Small" Color="Color.Info"
                                                      Style="font-size:0.6rem; height:16px; min-height:16px; margin-left:4px;">
                                                 в работе
+                                            </MudChip>
+                                        }
+                                        @if (_basket.Any(b => b.Id == context.Id))
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success"
+                                                     Style="font-size:0.6rem; height:16px; min-height:16px; margin-left:4px;">
+                                                в док
                                             </MudChip>
                                         }
                                     </MudText>
@@ -100,72 +114,110 @@
             </MudPaper>
         </MudItem>
 
-        @* === CENTER: Material details OR Document review comments === *@
+        @* === CENTER: Material text viewer === *@
         <MudItem xs="12" md="5">
-            @if (_mode == WorkMode.Material && _selected != null)
+            @if (_viewingMaterial != null)
             {
                 <MudPaper Class="panel-compact" Elevation="0" Style="background:#141414; border:1px solid #1e1e1e; height:calc(100vh - 160px); overflow-y:auto;">
-                    <MudText Typo="Typo.h6">Материал</MudText>
-                    <MudText Typo="Typo.body1" Style="font-weight:600; font-size:0.875rem;">@_selected.Title</MudText>
-                    <MudStack Row="true" Spacing="2" Class="mt-1 mb-2">
+                    @* Material selector chips *@
+                    @{
+                        var chipMaterials = _mode == WorkMode.Material ? _basket : _docSourceMaterials;
+                    }
+                    @if (chipMaterials.Count > 1)
+                    {
+                        <div class="mb-2" style="display:flex; flex-wrap:wrap; gap:4px;">
+                            @foreach (var mat in chipMaterials)
+                            {
+                                <MudChip T="string" Size="Size.Small"
+                                         Icon="@Icons.Material.Filled.Article"
+                                         Color="@(mat.Id == _viewingMaterial.Id ? Color.Primary : Color.Default)"
+                                         Variant="@(mat.Id == _viewingMaterial.Id ? Variant.Filled : Variant.Outlined)"
+                                         Style="font-size:0.7rem; height:22px; cursor:pointer;"
+                                         OnClick="@(() => ViewMaterial(mat))">
+                                    @Truncate(mat.Title, 25)
+                                </MudChip>
+                            }
+                        </div>
+                        <MudDivider Class="mb-2" Style="border-color:#222;" />
+                    }
+
+                    @* Material header *@
+                    <MudText Typo="Typo.body1" Style="font-weight:600; font-size:0.875rem;">@_viewingMaterial.Title</MudText>
+                    <MudStack Row="true" Spacing="2" Class="mt-1 mb-2" AlignItems="AlignItems.Center">
                         <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info"
-                                 Style="font-size:0.7rem; height:20px;">@_selected.Source</MudChip>
-                        @if (!string.IsNullOrEmpty(_selected.Country))
+                                 Style="font-size:0.7rem; height:20px;">@_viewingMaterial.Source</MudChip>
+                        @if (!string.IsNullOrEmpty(_viewingMaterial.Country))
                         {
                             <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
-                                     Style="font-size:0.7rem; height:20px;">@_selected.Country</MudChip>
+                                     Style="font-size:0.7rem; height:20px;">@_viewingMaterial.Country</MudChip>
                         }
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="GetPriorityColor(_selected.Priority)"
-                                 Style="font-size:0.7rem; height:20px;">@_selected.Priority</MudChip>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="GetPriorityColor(_viewingMaterial.Priority)"
+                                 Style="font-size:0.7rem; height:20px;">@_viewingMaterial.Priority</MudChip>
+
+                        @* Material action buttons (inline, compact) *@
+                        @if (_mode == WorkMode.Material && _viewingMaterial.Status == NewsFlow.Domain.Enums.MaterialStatus.InAnalysis)
+                        {
+                            <MudSpacer />
+                            @if (!_basket.Any(b => b.Id == _viewingMaterial.Id))
+                            {
+                                <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.Add"
+                                           OnClick="AddToBasket" Style="font-size:0.7rem; height:24px; text-transform:none;">
+                                    В документ
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.Remove"
+                                           OnClick="RemoveFromBasket" Style="font-size:0.7rem; height:24px; text-transform:none;">
+                                    Убрать
+                                </MudButton>
+                            }
+                        }
                     </MudStack>
 
                     <MudDivider Class="my-1" Style="border-color:#222;" />
 
+                    @* Translated text *@
                     <div class="text-field-compact">
                         <MudText Typo="Typo.caption" Style="color:#3b82f6; text-transform:uppercase; font-size:0.7rem;">Перевод</MudText>
-                        <MudTextField Value="@_selected.TranslatedText" Lines="8" ReadOnly="true"
+                        <MudTextField Value="@_viewingMaterial.TranslatedText" Lines="8" ReadOnly="true"
                                       Variant="Variant.Outlined" Margin="Margin.Dense"
                                       Style="font-size:0.8125rem;" Class="mt-1" />
                     </div>
 
+                    @* Original text (expandable) *@
                     <MudExpansionPanels Class="mt-2" Elevation="0">
                         <MudExpansionPanel Text="Оригинал" MaxHeight="200" Dense="true"
                                            Style="background:#1c1c1c; border:1px solid #222;">
                             <div class="text-field-compact">
-                                <MudTextField Value="@_selected.OriginalText" Lines="6" ReadOnly="true"
+                                <MudTextField Value="@_viewingMaterial.OriginalText" Lines="6" ReadOnly="true"
                                               Variant="Variant.Outlined" Margin="Margin.Dense"
                                               Style="font-size:0.8125rem;" />
                             </div>
                         </MudExpansionPanel>
                     </MudExpansionPanels>
 
-                    @if (_selected.Attachments.Count > 0)
+                    @if (_viewingMaterial.Attachments.Count > 0)
                     {
                         <MudText Typo="Typo.caption" Class="mt-2" Style="color:#3b82f6; text-transform:uppercase; font-size:0.7rem;">
-                            Вложения (@_selected.Attachments.Count)
+                            Вложения (@_viewingMaterial.Attachments.Count)
                         </MudText>
-                        @foreach (var att in _selected.Attachments)
+                        @foreach (var att in _viewingMaterial.Attachments)
                         {
                             <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.AttachFile"
                                      Style="font-size:0.7rem; height:20px;" Class="mr-1">@att.FileName</MudChip>
                         }
                     }
-                </MudPaper>
-            }
-            else if (_mode == WorkMode.Document && _editingDoc != null)
-            {
-                <MudPaper Class="panel-compact" Elevation="0" Style="background:#141414; border:1px solid #1e1e1e; height:calc(100vh - 160px); overflow-y:auto;">
-                    <MudText Typo="Typo.h6">Исходные материалы</MudText>
-                    @foreach (var mat in _editingDoc.SourceMaterials)
-                    {
-                        <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Article"
-                                 Style="font-size:0.75rem; height:22px;" Class="mr-1 mb-1">@mat.Title</MudChip>
-                    }
 
-                    @if (_editingDoc.Comments.Any())
+                    @* Reviewer comments (when editing document) *@
+                    @if (_mode == WorkMode.Document && _editingDoc != null && _editingDoc.Comments.Any())
                     {
                         <MudDivider Class="my-2" Style="border-color:#222;" />
-                        <MudText Typo="Typo.caption" Style="color:#f59e0b; text-transform:uppercase; font-size:0.7rem;">Замечания ревьюера</MudText>
+                        <MudText Typo="Typo.caption" Style="color:#f59e0b; text-transform:uppercase; font-size:0.7rem;">
+                            Замечания ревьюера
+                        </MudText>
                         @foreach (var comment in _editingDoc.Comments.OrderByDescending(c => c.CreatedAt))
                         {
                             <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-1" Style="font-size:0.8rem;">
@@ -197,6 +249,48 @@
                     @(_mode == WorkMode.Document && _editingDoc != null ? "Редактирование документа" : "Новый документ")
                 </MudText>
 
+                @* Basket chips (new document mode) *@
+                @if (_mode == WorkMode.Material && _basket.Count > 0)
+                {
+                    <div class="mb-2">
+                        <MudText Typo="Typo.caption" Style="color:#3b82f6; text-transform:uppercase; font-size:0.7rem; margin-bottom:4px;">
+                            Материалы для документа (@_basket.Count)
+                        </MudText>
+                        <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                            @foreach (var mat in _basket)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined"
+                                         OnClose="@(() => RemoveMaterialFromBasket(mat.Id))"
+                                         OnClick="@(() => ViewMaterial(mat))"
+                                         Style="font-size:0.7rem; height:22px; cursor:pointer;">
+                                    @Truncate(mat.Title, 20)
+                                </MudChip>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @* Source materials chips (edit document mode) *@
+                @if (_mode == WorkMode.Document && _editingDoc != null && _docSourceMaterials.Count > 0)
+                {
+                    <div class="mb-2">
+                        <MudText Typo="Typo.caption" Style="color:#3b82f6; text-transform:uppercase; font-size:0.7rem; margin-bottom:4px;">
+                            Исходные материалы (@_docSourceMaterials.Count)
+                        </MudText>
+                        <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                            @foreach (var mat in _docSourceMaterials)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined"
+                                         Icon="@Icons.Material.Filled.Article"
+                                         OnClick="@(() => ViewMaterial(mat))"
+                                         Style="font-size:0.7rem; height:22px; cursor:pointer;">
+                                    @Truncate(mat.Title, 20)
+                                </MudChip>
+                            }
+                        </div>
+                    </div>
+                }
+
                 <div class="text-field-compact" style="flex:1; display:flex; flex-direction:column;">
                     <MudTextField @bind-Value="_docTitle" Label="Заголовок" Variant="Variant.Outlined"
                                   Margin="Margin.Dense" Class="mb-1" Style="font-size:0.8125rem;" />
@@ -209,20 +303,16 @@
                 <div class="toolbar-actions mt-2">
                     @if (_mode == WorkMode.Material)
                     {
-                        @if (!_taken)
+                        @if (_viewingMaterial != null && _viewingMaterial.Status == NewsFlow.Domain.Enums.MaterialStatus.Translated)
                         {
                             <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                                       OnClick="TakeForAnalysis" Disabled="@(_selected == null)">
+                                       OnClick="TakeForAnalysis">
                                 Взять в анализ
                             </MudButton>
                         }
-                        else
+
+                        @if (_viewingMaterial != null && _viewingMaterial.Status == NewsFlow.Domain.Enums.MaterialStatus.InAnalysis)
                         {
-                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                                       OnClick="CreateDocument"
-                                       Disabled="@(_selected == null || string.IsNullOrWhiteSpace(_docTitle))">
-                                Создать документ
-                            </MudButton>
                             <MudButton Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small"
                                        OnClick="@(() => ShowReasonDialog("Вернуть на перевод", ReturnToTranslation))">
                                 На перевод
@@ -238,6 +328,16 @@
                             <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small"
                                        OnClick="ReleaseFromAnalysis">
                                 В очередь
+                            </MudButton>
+                        }
+
+                        @if (_basket.Count > 0)
+                        {
+                            <MudSpacer />
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="CreateDocument"
+                                       Disabled="@(string.IsNullOrWhiteSpace(_docTitle))">
+                                Создать документ (@_basket.Count)
                             </MudButton>
                         }
                     }
@@ -265,12 +365,20 @@
 
     private List<NewsFlow.Application.Materials.DTOs.MaterialListItemDto> _queue = [];
     private List<NewsFlow.Application.Documents.DTOs.DocumentListItemDto> _myDocs = [];
-    private NewsFlow.Application.Materials.DTOs.MaterialDto? _selected;
+
+    // Current material displayed in center panel
+    private NewsFlow.Application.Materials.DTOs.MaterialDto? _viewingMaterial;
+
+    // Basket: materials accumulated for new document creation
+    private List<NewsFlow.Application.Materials.DTOs.MaterialDto> _basket = [];
+
+    // Document editing
     private NewsFlow.Application.Documents.DTOs.DocumentDto? _editingDoc;
+    private List<NewsFlow.Application.Materials.DTOs.MaterialDto> _docSourceMaterials = [];
+
     private string _docTitle = "";
     private string _docContent = "";
     private bool _loading;
-    private bool _taken;
     private WorkMode _mode = WorkMode.Material;
     private int _activeTab = 0;
 
@@ -305,59 +413,108 @@
         if (index == 0)
         {
             _editingDoc = null;
-            if (_selected == null) _mode = WorkMode.Material;
+            _docSourceMaterials.Clear();
+            _mode = WorkMode.Material;
+            // Restore viewing of basket material or clear
+            if (_basket.Count > 0 && _viewingMaterial == null)
+                _viewingMaterial = _basket[0];
         }
         else
         {
-            _selected = null;
-            _taken = false;
-            if (_editingDoc == null) _mode = WorkMode.Document;
+            _mode = WorkMode.Document;
+            _viewingMaterial = null;
         }
     }
 
     private async Task SelectMaterial(NewsFlow.Application.Materials.DTOs.MaterialListItemDto item)
     {
-        _selected = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialByIdQuery(item.Id));
-        _taken = _selected.Status == NewsFlow.Domain.Enums.MaterialStatus.InAnalysis;
+        var material = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialByIdQuery(item.Id));
+        _viewingMaterial = material;
         _editingDoc = null;
+        _docSourceMaterials.Clear();
         _mode = WorkMode.Material;
-        _docTitle = "";
-        _docContent = "";
     }
 
     private async Task SelectDocument(NewsFlow.Application.Documents.DTOs.DocumentListItemDto item)
     {
         _editingDoc = await Sender.Send(new NewsFlow.Application.Documents.Queries.GetDocumentByIdQuery(item.Id));
-        _selected = null;
-        _taken = false;
         _mode = WorkMode.Document;
         _docTitle = _editingDoc.Title;
         _docContent = _editingDoc.Content;
+
+        // Load full material data for each source material
+        _docSourceMaterials.Clear();
+        foreach (var matRef in _editingDoc.SourceMaterials)
+        {
+            try
+            {
+                var mat = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialByIdQuery(matRef.MaterialId));
+                _docSourceMaterials.Add(mat);
+            }
+            catch { /* material may have been deleted */ }
+        }
+
+        // Show first source material text
+        _viewingMaterial = _docSourceMaterials.FirstOrDefault();
     }
+
+    private void ViewMaterial(NewsFlow.Application.Materials.DTOs.MaterialDto material)
+    {
+        _viewingMaterial = material;
+    }
+
+    // === Basket operations ===
+
+    private void AddToBasket()
+    {
+        if (_viewingMaterial == null) return;
+        if (_basket.Any(b => b.Id == _viewingMaterial.Id)) return;
+        _basket.Add(_viewingMaterial);
+    }
+
+    private void RemoveFromBasket()
+    {
+        if (_viewingMaterial == null) return;
+        _basket.RemoveAll(b => b.Id == _viewingMaterial.Id);
+    }
+
+    private void RemoveMaterialFromBasket(Guid materialId)
+    {
+        _basket.RemoveAll(b => b.Id == materialId);
+        if (_viewingMaterial?.Id == materialId)
+            _viewingMaterial = _basket.FirstOrDefault();
+    }
+
+    // === Material actions ===
 
     private async Task TakeForAnalysis()
     {
-        if (_selected == null) return;
+        if (_viewingMaterial == null) return;
         try
         {
-            _selected = await Sender.Send(
-                new NewsFlow.Application.Materials.Commands.TakeMaterialForAnalysisCommand(_selected.Id));
-            _taken = true;
+            _viewingMaterial = await Sender.Send(
+                new NewsFlow.Application.Materials.Commands.TakeMaterialForAnalysisCommand(_viewingMaterial.Id));
             Snackbar.Add("Материал взят в анализ", Severity.Success);
+            await LoadQueue();
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
 
     private async Task CreateDocument()
     {
-        if (_selected == null) return;
+        if (_basket.Count == 0) return;
         try
         {
+            var materialIds = _basket.Select(b => b.Id).ToList();
+            var priority = _basket.Max(b => b.Priority);
             var doc = await Sender.Send(new NewsFlow.Application.Documents.Commands.CreateDocumentCommand(
                 new NewsFlow.Application.Documents.DTOs.CreateDocumentDto(
-                    _docTitle, _docContent, [_selected.Id], _selected.Priority)));
-            Snackbar.Add($"Документ создан: {doc.Title}", Severity.Success);
-            ResetSelection();
+                    _docTitle, _docContent, materialIds, priority)));
+            Snackbar.Add($"Документ создан из {_basket.Count} материалов", Severity.Success);
+            _basket.Clear();
+            _viewingMaterial = null;
+            _docTitle = "";
+            _docContent = "";
             await LoadQueue();
             await LoadMyDocs();
         }
@@ -383,7 +540,6 @@
         if (_editingDoc == null) return;
         try
         {
-            // Save first if content changed
             if (_docTitle != _editingDoc.Title || _docContent != _editingDoc.Content)
             {
                 await Sender.Send(new NewsFlow.Application.Documents.Commands.UpdateDocumentContentCommand(
@@ -393,6 +549,8 @@
             await Sender.Send(new NewsFlow.Application.Documents.Commands.SubmitDocumentForReviewCommand(_editingDoc.Id));
             Snackbar.Add("Документ отправлен на ревью", Severity.Success);
             _editingDoc = null;
+            _docSourceMaterials.Clear();
+            _viewingMaterial = null;
             _docTitle = "";
             _docContent = "";
             await LoadMyDocs();
@@ -402,13 +560,14 @@
 
     private async Task ReturnToTranslation(string? reason)
     {
-        if (_selected == null) return;
+        if (_viewingMaterial == null) return;
         try
         {
             await Sender.Send(new NewsFlow.Application.Materials.Commands.ReturnMaterialToTranslationCommand(
-                _selected.Id, reason));
+                _viewingMaterial.Id, reason));
             Snackbar.Add("Материал возвращён на перевод", Severity.Info);
-            ResetSelection();
+            RemoveFromBasket();
+            _viewingMaterial = _basket.FirstOrDefault();
             await LoadQueue();
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
@@ -416,13 +575,14 @@
 
     private async Task MarkNotOfInterest(string? reason)
     {
-        if (_selected == null) return;
+        if (_viewingMaterial == null) return;
         try
         {
             await Sender.Send(new NewsFlow.Application.Materials.Commands.MarkMaterialNotOfInterestCommand(
-                _selected.Id, reason));
+                _viewingMaterial.Id, reason));
             Snackbar.Add("Материал отмечен: не представляет интереса", Severity.Info);
-            ResetSelection();
+            RemoveFromBasket();
+            _viewingMaterial = _basket.FirstOrDefault();
             await LoadQueue();
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
@@ -430,13 +590,14 @@
 
     private async Task MarkDistorted(string? reason)
     {
-        if (_selected == null) return;
+        if (_viewingMaterial == null) return;
         try
         {
             await Sender.Send(new NewsFlow.Application.Materials.Commands.MarkMaterialDistortedCommand(
-                _selected.Id, reason));
+                _viewingMaterial.Id, reason));
             Snackbar.Add("Материал отмечен: искажён", Severity.Info);
-            ResetSelection();
+            RemoveFromBasket();
+            _viewingMaterial = _basket.FirstOrDefault();
             await LoadQueue();
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
@@ -444,12 +605,13 @@
 
     private async Task ReleaseFromAnalysis()
     {
-        if (_selected == null) return;
+        if (_viewingMaterial == null) return;
         try
         {
-            await Sender.Send(new NewsFlow.Application.Materials.Commands.ReleaseMaterialFromAnalysisCommand(_selected.Id));
+            await Sender.Send(new NewsFlow.Application.Materials.Commands.ReleaseMaterialFromAnalysisCommand(_viewingMaterial.Id));
             Snackbar.Add("Материал возвращён в очередь", Severity.Info);
-            ResetSelection();
+            RemoveFromBasket();
+            _viewingMaterial = _basket.FirstOrDefault();
             await LoadQueue();
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
@@ -472,13 +634,15 @@
         }
     }
 
-    private void ResetSelection()
+    private string GetMaterialRowClass(NewsFlow.Application.Materials.DTOs.MaterialListItemDto item)
     {
-        _selected = null;
-        _taken = false;
-        _docTitle = "";
-        _docContent = "";
+        if (item.Id == _viewingMaterial?.Id) return "selected-row";
+        if (_basket.Any(b => b.Id == item.Id)) return "basket-row";
+        return "";
     }
+
+    private static string Truncate(string text, int maxLen)
+        => text.Length <= maxLen ? text : text[..maxLen] + "...";
 
     private Color GetPriorityColor(NewsFlow.Domain.Enums.Priority p) => p switch
     {

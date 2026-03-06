@@ -170,6 +170,10 @@ h1:focus {
     background-color: var(--nf-row-selected) !important;
 }
 
+.analyst-workspace .mud-table-row.basket-row {
+    background-color: rgba(166, 226, 46, 0.08) !important;
+}
+
 .panel-compact {
     padding: 10px !important;
 }
