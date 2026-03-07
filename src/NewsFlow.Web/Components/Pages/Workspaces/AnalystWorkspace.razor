@@ -447,17 +447,11 @@
         _docTitle = _editingDoc.Title;
         _docContent = _editingDoc.Content;
 
-        // Load full material data for each source material
-        _docSourceMaterials.Clear();
-        foreach (var matRef in _editingDoc.SourceMaterials)
-        {
-            try
-            {
-                var mat = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialByIdQuery(matRef.MaterialId));
-                _docSourceMaterials.Add(mat);
-            }
-            catch (KeyNotFoundException) { /* material may have been deleted */ }
-        }
+        // Load all source materials in a single query
+        var materialIds = _editingDoc.SourceMaterials.Select(s => s.MaterialId).ToList();
+        _docSourceMaterials = materialIds.Count > 0
+            ? await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialsByIdsQuery(materialIds))
+            : [];
 
         // Show first source material text
         _viewingMaterial = _docSourceMaterials.FirstOrDefault();
