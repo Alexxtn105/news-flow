@@ -64,7 +64,7 @@ public class UpdateDocumentContentHandler : IRequestHandler<UpdateDocumentConten
 }
 
 // === Analyst: submit for review ===
-public record SubmitDocumentForReviewCommand(Guid DocumentId) : IRequest<DocumentDto>;
+public record SubmitDocumentForReviewCommand(Guid DocumentId, string? Title = null, string? Content = null) : IRequest<DocumentDto>;
 
 public class SubmitForReviewHandler : IRequestHandler<SubmitDocumentForReviewCommand, DocumentDto>
 {
@@ -76,9 +76,14 @@ public class SubmitForReviewHandler : IRequestHandler<SubmitDocumentForReviewCom
     public async Task<DocumentDto> Handle(SubmitDocumentForReviewCommand r, CancellationToken ct)
     {
         var userId = _cu.UserId ?? throw new UnauthorizedAccessException();
+
+        // Clear tracker to avoid stale state from long-lived Blazor Server DbContext
+        _db.ChangeTracker.Clear();
+
         var d = await _db.Documents.Include(d => d.CreatedBy).Include(d => d.AssignedTo)
             .Include(d => d.SourceMaterials).ThenInclude(sm => sm.Material)
             .Include(d => d.Comments).ThenInclude(c => c.Author)
+            .Include(d => d.Versions)
             .FirstOrDefaultAsync(d => d.Id == r.DocumentId, ct)
             ?? throw new KeyNotFoundException("Document not found");
 
@@ -87,6 +92,8 @@ public class SubmitForReviewHandler : IRequestHandler<SubmitDocumentForReviewCom
         if (d.Status != DocumentStatus.Draft && d.Status != DocumentStatus.ReturnedForRevision)
             throw new InvalidOperationException($"Cannot submit document in status {d.Status}");
 
+        if (r.Title != null) d.Title = r.Title;
+        if (r.Content != null) d.Content = r.Content;
         d.Status = DocumentStatus.Draft; // ensure Draft for Reviewer queue
         d.AssignedToId = null;
         d.AssignedAt = null;

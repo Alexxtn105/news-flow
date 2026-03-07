@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using NewsFlow.Domain.Entities;
 
 namespace NewsFlow.Application.Common.Interfaces;
 
 public interface IApplicationDbContext
 {
+    ChangeTracker ChangeTracker { get; }
     DbSet<User> Users { get; }
     DbSet<Role> Roles { get; }
     DbSet<Language> Languages { get; }

@@ -539,13 +539,8 @@
         if (_editingDoc == null) return;
         try
         {
-            if (_docTitle != _editingDoc.Title || _docContent != _editingDoc.Content)
-            {
-                await Sender.Send(new NewsFlow.Application.Documents.Commands.UpdateDocumentContentCommand(
-                    _editingDoc.Id, _docTitle, _docContent));
-            }
-
-            await Sender.Send(new NewsFlow.Application.Documents.Commands.SubmitDocumentForReviewCommand(_editingDoc.Id));
+            await Sender.Send(new NewsFlow.Application.Documents.Commands.SubmitDocumentForReviewCommand(
+                _editingDoc.Id, _docTitle, _docContent));
             Snackbar.Add("Документ отправлен на ревью", Severity.Success);
             _editingDoc = null;
             _docSourceMaterials.Clear();
