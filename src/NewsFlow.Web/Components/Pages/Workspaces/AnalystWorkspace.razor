@@ -412,10 +412,15 @@
         _activeTab = index;
         if (index == 0)
         {
+            // Clear doc editing state, but preserve basket draft
+            if (_editingDoc != null)
+            {
+                _docTitle = "";
+                _docContent = "";
+            }
             _editingDoc = null;
             _docSourceMaterials.Clear();
             _mode = WorkMode.Material;
-            // Restore viewing of basket material or clear
             if (_basket.Count > 0 && _viewingMaterial == null)
                 _viewingMaterial = _basket[0];
         }
@@ -451,7 +456,7 @@
                 var mat = await Sender.Send(new NewsFlow.Application.Materials.Queries.GetMaterialByIdQuery(matRef.MaterialId));
                 _docSourceMaterials.Add(mat);
             }
-            catch { /* material may have been deleted */ }
+            catch (KeyNotFoundException) { /* material may have been deleted */ }
         }
 
         // Show first source material text
