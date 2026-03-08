@@ -4,6 +4,7 @@
 @inject ISnackbar Snackbar
 @inject NewsFlow.Application.Common.Interfaces.IWorkspaceProvider WorkspaceProvider
 @inject NewsFlow.Application.Common.Interfaces.IPipelineProvider PipelineProvider
+@inject IJSRuntime JS
 
 @if (_workspace == null)
 {
@@ -111,6 +112,12 @@ else
                     }
 
                     <MudStack Row="true" Class="mt-3" Justify="Justify.FlexEnd">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Info"
+                                   StartIcon="@Icons.Material.Filled.Download"
+                                   OnClick="ExportDocx">
+                            Скачать DOCX
+                        </MudButton>
+                        <MudSpacer />
                         @if (!_taken)
                         {
                             @foreach (var action in _workspace.Actions.Where(a => a.Code == "take"))
@@ -258,6 +265,22 @@ else
         catch (Exception ex)
         {
             Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ExportDocx()
+    {
+        if (_selectedDoc == null) return;
+        try
+        {
+            var result = await Sender.Send(new NewsFlow.Application.Documents.Queries.ExportDocumentQuery(_selectedDoc.Id));
+            var base64 = Convert.ToBase64String(result.FileContent);
+            await JS.InvokeVoidAsync("downloadFile", result.FileName,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", base64);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Ошибка экспорта: {ex.Message}", Severity.Error);
         }
     }
 

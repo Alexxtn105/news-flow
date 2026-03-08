@@ -3,6 +3,7 @@
 @inject ISender Sender
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject IJSRuntime JS
 
 <PageTitle>Аналитик</PageTitle>
 
@@ -353,6 +354,11 @@
                                    Disabled="@(string.IsNullOrWhiteSpace(_docTitle))">
                             На ревью
                         </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Download"
+                                   OnClick="ExportDocx">
+                            DOCX
+                        </MudButton>
                     }
                 </div>
             </MudPaper>
@@ -532,6 +538,19 @@
             await LoadMyDocs();
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task ExportDocx()
+    {
+        if (_editingDoc == null) return;
+        try
+        {
+            var result = await Sender.Send(new NewsFlow.Application.Documents.Queries.ExportDocumentQuery(_editingDoc.Id));
+            var base64 = Convert.ToBase64String(result.FileContent);
+            await JS.InvokeVoidAsync("downloadFile", result.FileName,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", base64);
+        }
+        catch (Exception ex) { Snackbar.Add($"Ошибка экспорта: {ex.Message}", Severity.Error); }
     }
 
     private async Task SubmitForReview()

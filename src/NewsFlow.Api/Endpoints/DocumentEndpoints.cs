@@ -60,6 +60,18 @@ public static class DocumentEndpoints
             catch (KeyNotFoundException) { return Results.NotFound(); }
             catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
         });
+
+        group.MapGet("/{id:guid}/export", async (Guid id, ISender s) =>
+        {
+            try
+            {
+                var result = await s.Send(new NewsFlow.Application.Documents.Queries.ExportDocumentQuery(id));
+                return Results.File(result.FileContent,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    result.FileName);
+            }
+            catch (KeyNotFoundException) { return Results.NotFound(); }
+        }).WithName("ExportDocument");
     }
 
     private static void MapWorkflowAction<TRequest>(RouteGroupBuilder group, string path, Func<Guid, TRequest> factory)
