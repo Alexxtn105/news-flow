@@ -115,7 +115,27 @@ public class Document : AggregateRoot
     {
         AssignedToId = null;
         AssignedAt = null;
-        // Revert to previous non-locked status if needed
+    }
+
+    public bool ReleaseStaleAssignment()
+    {
+        if (AssignedToId is null) return false;
+
+        var previousStatus = Status switch
+        {
+            DocumentStatus.InReview => DocumentStatus.Draft,
+            DocumentStatus.InRegistration => DocumentStatus.Reviewed,
+            DocumentStatus.InControl => DocumentStatus.Registered,
+            DocumentStatus.InEvaluation => DocumentStatus.Controlled,
+            _ => (DocumentStatus?)null
+        };
+
+        if (previousStatus is null) return false;
+
+        Status = previousStatus.Value;
+        AssignedToId = null;
+        AssignedAt = null;
+        return true;
     }
 
     public DocumentVersion CreateVersionSnapshot()

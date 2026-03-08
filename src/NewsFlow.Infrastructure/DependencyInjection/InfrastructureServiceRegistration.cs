@@ -43,6 +43,7 @@ public static class InfrastructureServiceRegistration
             configuration["Storage:BasePath"] ?? "storage"));
         services.AddSingleton<IDocxExportService, DocxExportService>();
         services.AddHttpContextAccessor();
+        services.AddHostedService<StaleAssignmentCleanupService>();
 
         return services;
     }
