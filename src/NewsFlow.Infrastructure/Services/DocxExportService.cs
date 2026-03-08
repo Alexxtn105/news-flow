@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using NewsFlow.Application.Common.Interfaces;
 using NewsFlow.Application.Documents.DTOs;
@@ -149,8 +150,7 @@ public class DocxExportService : IDocxExportService
         }
 
         body.Add(Heading("Содержание", "Heading2"));
-        foreach (var line in doc.Content.Split('\n'))
-            body.Add(TextParagraph(line));
+        ConvertHtmlToDocx(body, doc.Content);
 
         if (doc.Comments.Count > 0)
         {
@@ -195,14 +195,136 @@ public class DocxExportService : IDocxExportService
             Run($"{c.Author} ({c.CreatedAt:dd.MM.yyyy HH:mm}): ", bold: true),
             Run(c.Text));
 
-    private static XElement Run(string text, bool bold = false)
+    private static XElement Run(string text, bool bold = false, bool italic = false, bool underline = false, bool strike = false)
     {
         var run = new XElement(W + "r");
-        if (bold)
-            run.Add(new XElement(W + "rPr", new XElement(W + "b")));
+        if (bold || italic || underline || strike)
+        {
+            var rPr = new XElement(W + "rPr");
+            if (bold) rPr.Add(new XElement(W + "b"));
+            if (italic) rPr.Add(new XElement(W + "i"));
+            if (underline) rPr.Add(new XElement(W + "u", new XAttribute(W + "val", "single")));
+            if (strike) rPr.Add(new XElement(W + "strike"));
+            run.Add(rPr);
+        }
         run.Add(new XElement(W + "t",
             new XAttribute(XNamespace.Xml + "space", "preserve"),
             text));
         return run;
     }
+
+    private static void ConvertHtmlToDocx(XElement body, string html)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            body.Add(EmptyParagraph());
+            return;
+        }
+
+        // If plain text (no HTML tags), split by newlines
+        if (!html.Contains('<'))
+        {
+            foreach (var line in html.Split('\n'))
+                body.Add(TextParagraph(line));
+            return;
+        }
+
+        // Split HTML into block-level elements
+        var blocks = Regex.Split(html, @"(?=<(?:p|h[1-3]|ul|ol|blockquote|br\s*/?)[\s>])|(?<=</(?:p|h[1-3]|ul|ol|blockquote)>)");
+
+        foreach (var block in blocks)
+        {
+            var trimmed = block.Trim();
+            if (string.IsNullOrEmpty(trimmed)) continue;
+            if (trimmed == "<br>" || trimmed == "<br/>" || trimmed == "<br />")
+            {
+                body.Add(EmptyParagraph());
+                continue;
+            }
+
+            // Headings
+            var headingMatch = Regex.Match(trimmed, @"<h([1-3])[^>]*>(.*?)</h\1>", RegexOptions.Singleline);
+            if (headingMatch.Success)
+            {
+                var level = headingMatch.Groups[1].Value;
+                var text = StripTags(headingMatch.Groups[2].Value);
+                body.Add(Heading(text, $"Heading{level}"));
+                continue;
+            }
+
+            // Unordered / ordered list
+            var listMatch = Regex.Match(trimmed, @"<[ou]l[^>]*>(.*?)</[ou]l>", RegexOptions.Singleline);
+            if (listMatch.Success)
+            {
+                var items = Regex.Matches(listMatch.Groups[1].Value, @"<li[^>]*>(.*?)</li>", RegexOptions.Singleline);
+                foreach (Match item in items)
+                    body.Add(BulletParagraph(StripTags(item.Groups[1].Value)));
+                continue;
+            }
+
+            // Blockquote
+            var bqMatch = Regex.Match(trimmed, @"<blockquote[^>]*>(.*?)</blockquote>", RegexOptions.Singleline);
+            if (bqMatch.Success)
+            {
+                var p = new XElement(W + "p",
+                    new XElement(W + "pPr",
+                        new XElement(W + "ind", new XAttribute(W + "left", "720"))),
+                    Run(StripTags(bqMatch.Groups[1].Value), italic: true));
+                body.Add(p);
+                continue;
+            }
+
+            // Paragraph with inline formatting
+            var pMatch = Regex.Match(trimmed, @"<p[^>]*>(.*?)</p>", RegexOptions.Singleline);
+            if (pMatch.Success)
+            {
+                var para = new XElement(W + "p");
+                ParseInlineRuns(para, pMatch.Groups[1].Value);
+                body.Add(para);
+                continue;
+            }
+
+            // Fallback: treat as plain text
+            var plainText = StripTags(trimmed);
+            if (!string.IsNullOrWhiteSpace(plainText))
+                body.Add(TextParagraph(plainText));
+        }
+    }
+
+    private static void ParseInlineRuns(XElement paragraph, string html)
+    {
+        if (string.IsNullOrEmpty(html))
+        {
+            paragraph.Add(Run(""));
+            return;
+        }
+
+        // Regex to match inline tags or plain text
+        var parts = Regex.Split(html, @"(<(?:strong|b|em|i|u|s|strike|del|a|span)[^>]*>.*?</(?:strong|b|em|i|u|s|strike|del|a|span)>)", RegexOptions.Singleline);
+
+        foreach (var part in parts)
+        {
+            if (string.IsNullOrEmpty(part)) continue;
+
+            var bold = Regex.IsMatch(part, @"<(strong|b)\b");
+            var italic = Regex.IsMatch(part, @"<(em|i)\b");
+            var underline = Regex.IsMatch(part, @"<u\b");
+            var strikethrough = Regex.IsMatch(part, @"<(s|strike|del)\b");
+
+            var text = DecodeHtml(StripTags(part));
+            if (!string.IsNullOrEmpty(text))
+                paragraph.Add(Run(text, bold, italic, underline, strikethrough));
+        }
+    }
+
+    private static string StripTags(string html) =>
+        DecodeHtml(Regex.Replace(html, @"<[^>]+>", ""));
+
+    private static string DecodeHtml(string text) =>
+        text.Replace("&amp;", "&")
+            .Replace("&lt;", "<")
+            .Replace("&gt;", ">")
+            .Replace("&quot;", "\"")
+            .Replace("&#39;", "'")
+            .Replace("&nbsp;", " ");
 }

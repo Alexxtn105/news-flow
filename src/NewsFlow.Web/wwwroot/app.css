@@ -356,3 +356,62 @@ h1:focus {
     border: 1px solid var(--nf-border);
     display: block;
 }
+
+/* ============================================================
+   Quill editor theme integration
+   ============================================================ */
+.ql-toolbar.ql-snow {
+    background: var(--nf-surface) !important;
+    border-color: var(--nf-border) !important;
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.ql-container.ql-snow {
+    border-color: var(--nf-border) !important;
+    border-radius: 0 0 10px 10px !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 0.875rem;
+    min-height: 250px;
+}
+
+.ql-editor {
+    background: var(--nf-surface) !important;
+    color: var(--nf-text) !important;
+    min-height: 250px;
+}
+
+.ql-editor.ql-blank::before {
+    color: var(--nf-text-secondary) !important;
+    font-style: normal !important;
+}
+
+.ql-snow .ql-stroke {
+    stroke: var(--nf-text-secondary) !important;
+}
+
+.ql-snow .ql-fill {
+    fill: var(--nf-text-secondary) !important;
+}
+
+.ql-snow .ql-picker-label {
+    color: var(--nf-text-secondary) !important;
+}
+
+.ql-snow .ql-picker-options {
+    background: var(--nf-surface) !important;
+    border-color: var(--nf-border) !important;
+}
+
+.ql-snow .ql-picker-item {
+    color: var(--nf-text) !important;
+}
+
+.ql-snow button:hover .ql-stroke,
+.ql-snow button.ql-active .ql-stroke {
+    stroke: var(--nf-primary) !important;
+}
+
+.ql-snow button:hover .ql-fill,
+.ql-snow button.ql-active .ql-fill {
+    fill: var(--nf-primary) !important;
+}

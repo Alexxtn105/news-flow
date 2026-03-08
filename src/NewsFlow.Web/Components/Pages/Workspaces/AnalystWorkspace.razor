@@ -292,12 +292,50 @@
                     </div>
                 }
 
-                <div class="text-field-compact" style="flex:1; display:flex; flex-direction:column;">
+                <div class="text-field-compact" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
                     <MudTextField @bind-Value="_docTitle" Label="Заголовок" Variant="Variant.Outlined"
                                   Margin="Margin.Dense" Class="mb-1" Style="font-size:0.8125rem;" />
-                    <MudTextField @bind-Value="_docContent" Label="Текст документа" Lines="14"
-                                  Variant="Variant.Outlined" Margin="Margin.Dense"
-                                  Style="font-size:0.8125rem; flex:1;" />
+                    <div style="flex:1; min-height:300px; display:flex; flex-direction:column;">
+                        <BlazoredTextEditor @ref="_quillEditor" Placeholder="Текст документа...">
+                            <ToolbarContent>
+                                <select class="ql-header">
+                                    <option selected></option>
+                                    <option value="1"></option>
+                                    <option value="2"></option>
+                                    <option value="3"></option>
+                                </select>
+                                <span class="ql-formats">
+                                    <button class="ql-bold"></button>
+                                    <button class="ql-italic"></button>
+                                    <button class="ql-underline"></button>
+                                    <button class="ql-strike"></button>
+                                </span>
+                                <span class="ql-formats">
+                                    <select class="ql-color"></select>
+                                    <select class="ql-background"></select>
+                                </span>
+                                <span class="ql-formats">
+                                    <button class="ql-list" value="ordered"></button>
+                                    <button class="ql-list" value="bullet"></button>
+                                    <button class="ql-indent" value="-1"></button>
+                                    <button class="ql-indent" value="+1"></button>
+                                </span>
+                                <span class="ql-formats">
+                                    <select class="ql-align"></select>
+                                </span>
+                                <span class="ql-formats">
+                                    <button class="ql-blockquote"></button>
+                                    <button class="ql-link"></button>
+                                </span>
+                                <span class="ql-formats">
+                                    <button class="ql-clean"></button>
+                                </span>
+                            </ToolbarContent>
+                            <EditorContent>
+                                @((MarkupString)_docContent)
+                            </EditorContent>
+                        </BlazoredTextEditor>
+                    </div>
                 </div>
 
                 @* === Action toolbar === *@
@@ -384,6 +422,7 @@
 
     private string _docTitle = "";
     private string _docContent = "";
+    private BlazoredTextEditor? _quillEditor;
     private bool _loading;
     private WorkMode _mode = WorkMode.Material;
     private int _activeTab = 0;
@@ -505,11 +544,18 @@
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
 
+    private async Task SyncEditorContent()
+    {
+        if (_quillEditor != null)
+            _docContent = await _quillEditor.GetHTML();
+    }
+
     private async Task CreateDocument()
     {
         if (_basket.Count == 0) return;
         try
         {
+            await SyncEditorContent();
             var materialIds = _basket.Select(b => b.Id).ToList();
             var priority = _basket.Max(b => b.Priority);
             var doc = await Sender.Send(new NewsFlow.Application.Documents.Commands.CreateDocumentCommand(
@@ -531,6 +577,7 @@
         if (_editingDoc == null) return;
         try
         {
+            await SyncEditorContent();
             _editingDoc = await Sender.Send(
                 new NewsFlow.Application.Documents.Commands.UpdateDocumentContentCommand(
                     _editingDoc.Id, _docTitle, _docContent));
@@ -545,6 +592,8 @@
         if (_editingDoc == null) return;
         try
         {
+            await SyncEditorContent();
+            await SaveDocument();
             var result = await Sender.Send(new NewsFlow.Application.Documents.Queries.ExportDocumentQuery(_editingDoc.Id));
             var base64 = Convert.ToBase64String(result.FileContent);
             await JS.InvokeVoidAsync("downloadFile", result.FileName,
@@ -558,6 +607,7 @@
         if (_editingDoc == null) return;
         try
         {
+            await SyncEditorContent();
             await Sender.Send(new NewsFlow.Application.Documents.Commands.SubmitDocumentForReviewCommand(
                 _editingDoc.Id, _docTitle, _docContent));
             Snackbar.Add("Документ отправлен на ревью", Severity.Success);
