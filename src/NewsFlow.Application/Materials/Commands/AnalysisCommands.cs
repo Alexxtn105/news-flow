@@ -58,14 +58,16 @@ public record ReleaseMaterialFromAnalysisCommand(Guid MaterialId) : IRequest;
 public class ReleaseFromAnalysisHandler : IRequestHandler<ReleaseMaterialFromAnalysisCommand>
 {
     private readonly IApplicationDbContext _db;
+    private readonly INotificationService _notifications;
 
-    public ReleaseFromAnalysisHandler(IApplicationDbContext db) => _db = db;
+    public ReleaseFromAnalysisHandler(IApplicationDbContext db, INotificationService notifications) { _db = db; _notifications = notifications; }
 
     public async Task Handle(ReleaseMaterialFromAnalysisCommand r, CancellationToken ct)
     {
         var m = await _db.Materials.FindAsync([r.MaterialId], ct) ?? throw new KeyNotFoundException();
         m.ReleaseFromAnalysis();
         await _db.SaveChangesAsync(ct);
+        await _notifications.NotifyRoleAsync("Analyst", $"Материал возвращён в очередь анализа: {m.Title}", "Material", m.Id);
     }
 }
 
@@ -75,14 +77,16 @@ public record ReturnMaterialToTranslationCommand(Guid MaterialId, string? Reason
 public class ReturnToTranslationHandler : IRequestHandler<ReturnMaterialToTranslationCommand>
 {
     private readonly IApplicationDbContext _db;
+    private readonly INotificationService _notifications;
 
-    public ReturnToTranslationHandler(IApplicationDbContext db) => _db = db;
+    public ReturnToTranslationHandler(IApplicationDbContext db, INotificationService notifications) { _db = db; _notifications = notifications; }
 
     public async Task Handle(ReturnMaterialToTranslationCommand r, CancellationToken ct)
     {
         var m = await _db.Materials.FindAsync([r.MaterialId], ct) ?? throw new KeyNotFoundException();
         m.ReturnToTranslation(r.Reason);
         await _db.SaveChangesAsync(ct);
+        await _notifications.NotifyRoleAsync("Translator", $"Материал возвращён на перевод: {m.Title}", "Material", m.Id);
     }
 }
 

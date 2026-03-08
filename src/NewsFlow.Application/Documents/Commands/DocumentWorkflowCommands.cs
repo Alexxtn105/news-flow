@@ -70,8 +70,9 @@ public class SubmitForReviewHandler : IRequestHandler<SubmitDocumentForReviewCom
 {
     private readonly IApplicationDbContext _db;
     private readonly ICurrentUserService _cu;
+    private readonly INotificationService _notifications;
 
-    public SubmitForReviewHandler(IApplicationDbContext db, ICurrentUserService cu) { _db = db; _cu = cu; }
+    public SubmitForReviewHandler(IApplicationDbContext db, ICurrentUserService cu, INotificationService notifications) { _db = db; _cu = cu; _notifications = notifications; }
 
     public async Task<DocumentDto> Handle(SubmitDocumentForReviewCommand r, CancellationToken ct)
     {
@@ -99,6 +100,7 @@ public class SubmitForReviewHandler : IRequestHandler<SubmitDocumentForReviewCom
         d.AssignedAt = null;
         d.CreateVersionSnapshot();
         await _db.SaveChangesAsync(ct);
+        await _notifications.NotifyRoleAsync("Reviewer", $"Новый документ на ревью: {d.Title}", "Document", d.Id);
         return CreateDocumentHandler.ToDto(d);
     }
 }
@@ -129,7 +131,8 @@ public record ApproveReviewCommand(Guid DocumentId) : IRequest<DocumentDto>;
 public class ApproveReviewHandler : IRequestHandler<ApproveReviewCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
-    public ApproveReviewHandler(IApplicationDbContext db) => _db = db;
+    private readonly INotificationService _notifications;
+    public ApproveReviewHandler(IApplicationDbContext db, INotificationService notifications) { _db = db; _notifications = notifications; }
     public async Task<DocumentDto> Handle(ApproveReviewCommand r, CancellationToken ct)
     {
         var d = await _db.Documents.Include(d => d.CreatedBy).Include(d => d.AssignedTo)
@@ -139,6 +142,7 @@ public class ApproveReviewHandler : IRequestHandler<ApproveReviewCommand, Docume
         d.ApproveReview();
         d.CreateVersionSnapshot();
         await _db.SaveChangesAsync(ct);
+        await _notifications.NotifyRoleAsync("Registrar", $"Документ одобрен, ожидает регистрации: {d.Title}", "Document", d.Id);
         return CreateDocumentHandler.ToDto(d);
     }
 }
@@ -148,7 +152,8 @@ public class ReturnForRevisionHandler : IRequestHandler<ReturnForRevisionCommand
 {
     private readonly IApplicationDbContext _db;
     private readonly ICurrentUserService _cu;
-    public ReturnForRevisionHandler(IApplicationDbContext db, ICurrentUserService cu) { _db = db; _cu = cu; }
+    private readonly INotificationService _notifications;
+    public ReturnForRevisionHandler(IApplicationDbContext db, ICurrentUserService cu, INotificationService notifications) { _db = db; _cu = cu; _notifications = notifications; }
     public async Task<DocumentDto> Handle(ReturnForRevisionCommand r, CancellationToken ct)
     {
         var userId = _cu.UserId ?? throw new UnauthorizedAccessException();
@@ -159,6 +164,7 @@ public class ReturnForRevisionHandler : IRequestHandler<ReturnForRevisionCommand
         d.ReturnForRevision();
         d.Comments.Add(new DocumentComment { AuthorId = userId, Text = r.Comment });
         await _db.SaveChangesAsync(ct);
+        await _notifications.NotifyUserAsync(d.CreatedById, $"Документ возвращён на доработку: {d.Title}", "Document", d.Id);
         return CreateDocumentHandler.ToDto(d);
     }
 }
@@ -187,7 +193,8 @@ public record CompleteRegistrationCommand(Guid DocumentId, string RegistrationNu
 public class CompleteRegistrationHandler : IRequestHandler<CompleteRegistrationCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
-    public CompleteRegistrationHandler(IApplicationDbContext db) => _db = db;
+    private readonly INotificationService _notifications;
+    public CompleteRegistrationHandler(IApplicationDbContext db, INotificationService notifications) { _db = db; _notifications = notifications; }
     public async Task<DocumentDto> Handle(CompleteRegistrationCommand r, CancellationToken ct)
     {
         var d = await _db.Documents.Include(d => d.CreatedBy).Include(d => d.AssignedTo)
@@ -197,6 +204,7 @@ public class CompleteRegistrationHandler : IRequestHandler<CompleteRegistrationC
         d.CompleteRegistration(r.RegistrationNumber);
         d.CreateVersionSnapshot();
         await _db.SaveChangesAsync(ct);
+        await _notifications.NotifyRoleAsync("Controller", $"Документ зарегистрирован, ожидает контроля: {d.Title}", "Document", d.Id);
         return CreateDocumentHandler.ToDto(d);
     }
 }
@@ -225,7 +233,8 @@ public record ApproveControlCommand(Guid DocumentId) : IRequest<DocumentDto>;
 public class ApproveControlHandler : IRequestHandler<ApproveControlCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
-    public ApproveControlHandler(IApplicationDbContext db) => _db = db;
+    private readonly INotificationService _notifications;
+    public ApproveControlHandler(IApplicationDbContext db, INotificationService notifications) { _db = db; _notifications = notifications; }
     public async Task<DocumentDto> Handle(ApproveControlCommand r, CancellationToken ct)
     {
         var d = await _db.Documents.Include(d => d.CreatedBy).Include(d => d.AssignedTo)
@@ -235,6 +244,7 @@ public class ApproveControlHandler : IRequestHandler<ApproveControlCommand, Docu
         d.ApproveControl();
         d.CreateVersionSnapshot();
         await _db.SaveChangesAsync(ct);
+        await _notifications.NotifyRoleAsync("Evaluator", $"Документ на оценку: {d.Title}", "Document", d.Id);
         return CreateDocumentHandler.ToDto(d);
     }
 }
@@ -263,7 +273,8 @@ public record CompleteEvaluationCommand(Guid DocumentId, int Score, string? Comm
 public class CompleteEvaluationHandler : IRequestHandler<CompleteEvaluationCommand, DocumentDto>
 {
     private readonly IApplicationDbContext _db;
-    public CompleteEvaluationHandler(IApplicationDbContext db) => _db = db;
+    private readonly INotificationService _notifications;
+    public CompleteEvaluationHandler(IApplicationDbContext db, INotificationService notifications) { _db = db; _notifications = notifications; }
     public async Task<DocumentDto> Handle(CompleteEvaluationCommand r, CancellationToken ct)
     {
         var d = await _db.Documents.Include(d => d.CreatedBy).Include(d => d.AssignedTo)
@@ -273,6 +284,7 @@ public class CompleteEvaluationHandler : IRequestHandler<CompleteEvaluationComma
         d.CompleteEvaluation(r.Score, r.Commentary);
         d.CreateVersionSnapshot();
         await _db.SaveChangesAsync(ct);
+        await _notifications.NotifyUserAsync(d.CreatedById, $"Документ оценён ({r.Score}/5): {d.Title}", "Document", d.Id);
         return CreateDocumentHandler.ToDto(d);
     }
 }

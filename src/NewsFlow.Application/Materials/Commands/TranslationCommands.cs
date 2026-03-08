@@ -43,7 +43,8 @@ public record CompleteTranslationCommand(Guid MaterialId, string TranslatedText)
 public class CompleteTranslationHandler : IRequestHandler<CompleteTranslationCommand, MaterialDto>
 {
     private readonly IApplicationDbContext _db;
-    public CompleteTranslationHandler(IApplicationDbContext db) => _db = db;
+    private readonly INotificationService _notifications;
+    public CompleteTranslationHandler(IApplicationDbContext db, INotificationService notifications) { _db = db; _notifications = notifications; }
     public async Task<MaterialDto> Handle(CompleteTranslationCommand r, CancellationToken ct)
     {
         var m = await _db.Materials
@@ -53,6 +54,7 @@ public class CompleteTranslationHandler : IRequestHandler<CompleteTranslationCom
             ?? throw new KeyNotFoundException();
         m.CompleteTranslation(r.TranslatedText);
         await _db.SaveChangesAsync(ct);
+        await _notifications.NotifyRoleAsync("Analyst", $"Новый переведённый материал: {m.Title}", "Material", m.Id);
         return CreateMaterialHandler.ToDto(m);
     }
 }
@@ -61,12 +63,14 @@ public record ReleaseMaterialFromTranslationCommand(Guid MaterialId) : IRequest;
 public class ReleaseFromTranslationHandler : IRequestHandler<ReleaseMaterialFromTranslationCommand>
 {
     private readonly IApplicationDbContext _db;
-    public ReleaseFromTranslationHandler(IApplicationDbContext db) => _db = db;
+    private readonly INotificationService _notifications;
+    public ReleaseFromTranslationHandler(IApplicationDbContext db, INotificationService notifications) { _db = db; _notifications = notifications; }
     public async Task Handle(ReleaseMaterialFromTranslationCommand r, CancellationToken ct)
     {
         var m = await _db.Materials.FindAsync([r.MaterialId], ct) ?? throw new KeyNotFoundException();
         m.ReleaseFromTranslation();
         await _db.SaveChangesAsync(ct);
+        await _notifications.NotifyRoleAsync("Translator", $"Материал возвращён в очередь перевода: {m.Title}", "Material", m.Id);
     }
 }
 

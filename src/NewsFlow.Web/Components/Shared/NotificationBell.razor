@@ -1,5 +1,6 @@
 @inject ISnackbar Snackbar
 @inject AuthStateService Auth
+@inject BlazorNotificationService NotificationService
 @implements IDisposable
 
 <MudBadge Content="@_unreadCount" Color="Color.Error" Overlap="true" Visible="@(_unreadCount > 0)">
@@ -39,12 +40,36 @@
     private int _unreadCount;
     private bool _showPanel;
 
-    public void AddNotification(string message)
+    protected override void OnInitialized()
     {
-        _notifications.Add(new NotificationItem(message, DateTime.Now));
+        NotificationService.OnNotification += HandleNotification;
+    }
+
+    private void HandleNotification(NotificationEvent e)
+    {
+        if (!IsRelevant(e)) return;
+
+        _notifications.Add(new NotificationItem(e.Message, e.Timestamp));
         _unreadCount++;
-        Snackbar.Add(message, Severity.Info);
-        InvokeAsync(StateHasChanged);
+        InvokeAsync(() =>
+        {
+            Snackbar.Add(e.Message, Severity.Info);
+            StateHasChanged();
+        });
+    }
+
+    private bool IsRelevant(NotificationEvent e)
+    {
+        if (e.TargetRole is null && e.TargetUserId is null)
+            return true;
+
+        if (e.TargetUserId is not null && Auth.CurrentUser?.Id == e.TargetUserId)
+            return true;
+
+        if (e.TargetRole is not null && Auth.HasRole(e.TargetRole))
+            return true;
+
+        return false;
     }
 
     private void ToggleNotifications()
@@ -60,5 +85,8 @@
         _showPanel = false;
     }
 
-    public void Dispose() { }
+    public void Dispose()
+    {
+        NotificationService.OnNotification -= HandleNotification;
+    }
 }
